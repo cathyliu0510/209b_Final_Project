@@ -37,7 +37,7 @@ Part 1 -- Cathy
 
 Part 2 -- Jenny
 
-**Unified Data Pipeline & EDA → Notebook 00**
+**Final EDA Merged → Notebook 00**
 
   - Merges all three upstream notebooks into one coherent end-to-end pipeline
 
