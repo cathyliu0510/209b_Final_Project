@@ -1,0 +1,58 @@
+{
+  "metros": [
+    "austin",
+    "dallas",
+    "nashville",
+    "phoenix",
+    "jacksonville"
+  ],
+  "all_years": [
+    2013,
+    2014,
+    2015,
+    2016,
+    2017,
+    2018,
+    2019,
+    2020,
+    2021,
+    2022,
+    2023
+  ],
+  "train_years": [
+    2013,
+    2014,
+    2015,
+    2016,
+    2017,
+    2018
+  ],
+  "val_years": [
+    2019,
+    2020
+  ],
+  "test_years": [
+    2021,
+    2022,
+    2023
+  ],
+  "n_channels": 4,
+  "channels": [
+    "modis_R",
+    "modis_G",
+    "modis_B",
+    "viirs_night"
+  ],
+  "viirs_min": 12.0,
+  "viirs_max": 206.0,
+  "viirs_years": [
+    2017,
+    2018,
+    2019,
+    2020,
+    2021,
+    2022,
+    2023
+  ],
+  "note_viirs": "channel 3 = 0 for years before 2017 (VIIRS not available)"
+}
