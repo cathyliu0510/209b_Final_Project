@@ -32,6 +32,33 @@ Part 1 -- Cathy
   - Applies train/val/test split by year
     
   - Saves to data/tensors/ ready for model input
-    
 
+---
 
+Part 2 -- Jenny
+
+**Unified Data Pipeline & EDA → Notebook 00**
+
+  - Merges all three upstream notebooks into one coherent end-to-end pipeline
+
+  - Loads satellite imagery and economic panel, builds 4-channel (RGB + night-light) tensors per metro
+
+  - Cloud masking, VIIRS reprojection to MODIS grid, percentile-based normalization
+
+  - Extracts 20+ satellite-derived features per (metro, year): band statistics, NDVI proxy, lit-pixel fraction, Gini concentration, temporal deltas/growth rates, lag features
+
+  - Merges satellite features with economic panel; audits and resolves missingness across cities and years
+
+  - Applies z-score normalization using training-set statistics only (no data leakage)
+
+  - Produces 14 polished EDA visualizations saved to `figures/`:
+    - Satellite imagery grid, economic time series, missingness heatmap
+    - Feature distributions, satellite feature trends, cross-correlation heatmap
+    - Scatter plots with regression, within-metro temporal correlations
+    - Night-light change maps, COVID-19 impact analysis, growth rate comparison
+    - Pixel-level distributions, pairplots, train/val/test split
+
+  - Exports modeling-ready datasets to `data/modeling/`:
+    - `panel_features.csv` — full merged panel (un-normalized)
+    - `panel_normalized.csv` — z-score standardized for modeling
+    - `normalization_stats.json` — training-set means/stds for reproducibility
