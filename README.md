@@ -37,7 +37,7 @@ Part 1 -- Cathy
 
 Part 2 -- Jenny
 
-**Final EDA Merged → `Final_EDA_Merged.ipynb`**
+**Final EDA Merged → `00_Final_EDA_Merged.ipynb`**
 
   - Merges all three upstream notebooks into one coherent end-to-end pipeline
 
