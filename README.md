@@ -37,7 +37,7 @@ Part 1 -- Cathy
 
 Part 2 -- Jenny
 
-**Final EDA Merged → Notebook 00**
+**Final EDA Merged → `Final_EDA_Merged.ipynb`**
 
   - Merges all three upstream notebooks into one coherent end-to-end pipeline
 
@@ -51,7 +51,7 @@ Part 2 -- Jenny
 
   - Applies z-score normalization using training-set statistics only (no data leakage)
 
-  - Produces 14 polished EDA visualizations saved to `figures/`:
+  - Produces 14 polished EDA visualizations saved to `EDA_Figures/`:
     - Satellite imagery grid, economic time series, missingness heatmap
     - Feature distributions, satellite feature trends, cross-correlation heatmap
     - Scatter plots with regression, within-metro temporal correlations
