@@ -1,2 +1,24 @@
 .DS_Store
 .claude/
+data/raw/ghsl/
+data/imagery_sep/
+ghsl_threshold_comparison.png
+
+# large raw data
+data/raw/ghsl/
+# large project artifacts
+data/tensors/
+*.npz
+
+# heavy notebooks / outputs
+00_Final_EDA_Merged.ipynb
+00_data_pipeline_and_eda.ipynb
+
+# large figures
+figures/01_satellite_imagery_grid.png
+data/raw/ghsl/
+data/tensors/
+*.npz
+*.tif
+*.ovr
+*.zip
