@@ -823,6 +823,22 @@ cells = [
         - **Validation / test evaluation** is reported only after the tuned configuration for each model has been refit on the full training split.
         """
     ),
+    md(
+        """
+        ### 4.1 Tuning Outputs and Cross-Validation Visuals
+
+        The tables below document the tuning process in a way that is easy to audit:
+
+        - they record the exact compact search spaces used for each tunable model;
+        - they report the selected hyperparameters under the rolling-CV MAE rule;
+        - and they show fold-level rolling-origin performance so the tuning logic is transparent.
+
+        The two figures that follow make the time-aware workflow explicit:
+
+        - the first visual separates the **official train / validation / test split** from the **rolling-origin CV folds** used only for tuning;
+        - the second visual shows how the compact Ridge and Gradient Boosting searches are ranked by rolling-CV mean MAE.
+        """
+    ),
     code(
         """
         def make_tree_pipeline(numeric_features, estimator):
@@ -1216,6 +1232,170 @@ cells = [
             precision=3,
             left_align=["Holdout year"],
         )
+        """
+    ),
+    code(
+        """
+        from matplotlib.colors import ListedColormap
+        from matplotlib.patches import Patch
+
+
+        cv_years = list(range(2014, 2024))
+        cv_rows = [
+            "Official split",
+            "CV fold: validate 2016",
+            "CV fold: validate 2017",
+            "CV fold: validate 2018",
+        ]
+
+        status_map = {
+            0: ("Unused", "#ffffff"),
+            1: ("Train", "#c7d2fe"),
+            2: ("Validate", "#fcd34d"),
+            3: ("Test", "#86efac"),
+            4: ("Excluded", "#e5e7eb"),
+        }
+
+        cv_matrix = np.zeros((len(cv_rows), len(cv_years)), dtype=int)
+        year_to_col = {year: idx for idx, year in enumerate(cv_years)}
+
+        for year in range(2014, 2019):
+            cv_matrix[0, year_to_col[year]] = 1
+        cv_matrix[0, year_to_col[2019]] = 2
+        cv_matrix[0, year_to_col[2020]] = 4
+        for year in range(2021, 2024):
+            cv_matrix[0, year_to_col[year]] = 3
+
+        for row_idx, holdout_year in enumerate([2016, 2017, 2018], start=1):
+            for year in range(2014, holdout_year):
+                cv_matrix[row_idx, year_to_col[year]] = 1
+            cv_matrix[row_idx, year_to_col[holdout_year]] = 2
+
+        cell_text = {
+            0: "",
+            1: "Train",
+            2: "Val",
+            3: "Test",
+            4: "Excl.",
+        }
+
+        cmap = ListedColormap([status_map[idx][1] for idx in sorted(status_map)])
+        fig, ax = plt.subplots(figsize=(13.6, 3.9))
+        ax.imshow(cv_matrix, aspect="auto", cmap=cmap, vmin=0, vmax=4)
+        ax.set_xticks(np.arange(len(cv_years)))
+        ax.set_xticklabels(cv_years)
+        ax.set_yticks(np.arange(len(cv_rows)))
+        ax.set_yticklabels(cv_rows)
+        ax.set_title("Official Split vs Rolling-Origin CV Scheme")
+        ax.set_xlabel("Year")
+
+        for row_idx in range(cv_matrix.shape[0]):
+            for col_idx in range(cv_matrix.shape[1]):
+                value = cv_matrix[row_idx, col_idx]
+                label = cell_text[value]
+                if label:
+                    ax.text(
+                        col_idx,
+                        row_idx,
+                        label,
+                        ha="center",
+                        va="center",
+                        fontsize=9,
+                        color="#0f172a",
+                        fontweight="semibold",
+                    )
+
+        legend_handles = [
+            Patch(facecolor=color, edgecolor="#94a3b8", label=label)
+            for _, (label, color) in status_map.items()
+            if label != "Unused"
+        ]
+        ax.legend(
+            handles=legend_handles,
+            loc="upper center",
+            bbox_to_anchor=(0.5, -0.16),
+            ncol=4,
+            frameon=False,
+        )
+        for spine in ax.spines.values():
+            spine.set_visible(False)
+        plt.tight_layout(rect=(0, 0.04, 1, 1))
+        plt.savefig(FIGURES_DIR / "15_baseline_cv_protocol.png", dpi=220, bbox_inches="tight", facecolor="white")
+        plt.show()
+
+        ridge_curve = ridge_search_results.sort_values("alpha").copy()
+        gb_top_plot = gb_search_results.head(8).copy()
+        gb_top_plot["Setting"] = gb_top_plot.apply(
+            lambda row: (
+                f"{int(row['n_estimators'])} trees | "
+                f"lr {row['learning_rate']:.2f} | "
+                f"d{int(row['max_depth'])} | "
+                f"leaf {int(row['min_samples_leaf'])}"
+            ),
+            axis=1,
+        )
+
+        fig, axes = plt.subplots(1, 2, figsize=(14.2, 4.9))
+
+        axes[0].plot(
+            ridge_curve["alpha"],
+            ridge_curve["Rolling CV Mean MAE"],
+            color="#0f766e",
+            linewidth=2.4,
+            marker="o",
+            markersize=8,
+        )
+        axes[0].scatter(
+            [ridge_best_alpha],
+            [ridge_best["Rolling CV Mean MAE"]],
+            color="#b45309",
+            s=90,
+            zorder=4,
+            label=f"Selected alpha = {ridge_best_alpha:g}",
+        )
+        axes[0].set_xscale("log")
+        axes[0].set_title("Ridge Tuning Curve")
+        axes[0].set_xlabel("alpha (log scale)")
+        axes[0].set_ylabel("Rolling-CV mean MAE")
+        axes[0].legend(loc="upper right")
+        for _, row in ridge_curve.iterrows():
+            axes[0].text(
+                row["alpha"],
+                row["Rolling CV Mean MAE"] + 0.015,
+                f"{row['Rolling CV Mean MAE']:.3f}",
+                ha="center",
+                va="bottom",
+                fontsize=9,
+                color="#0f172a",
+            )
+
+        sns.barplot(
+            data=gb_top_plot,
+            y="Setting",
+            x="Rolling CV Mean MAE",
+            color="#2563eb",
+            ax=axes[1],
+        )
+        axes[1].set_title("Top Gradient Boosting Settings")
+        axes[1].set_xlabel("Rolling-CV mean MAE")
+        axes[1].set_ylabel("")
+        axes[1].set_xlim(0, gb_top_plot["Rolling CV Mean MAE"].max() * 1.12)
+        for patch in axes[1].patches:
+            width = patch.get_width()
+            y = patch.get_y() + patch.get_height() / 2
+            axes[1].text(
+                width + 0.01,
+                y,
+                f"{width:.3f}",
+                va="center",
+                ha="left",
+                fontsize=9,
+                color="#0f172a",
+            )
+
+        plt.tight_layout()
+        plt.savefig(FIGURES_DIR / "16_baseline_tuning_summary.png", dpi=220, bbox_inches="tight", facecolor="white")
+        plt.show()
         """
     ),
     code(
@@ -1615,36 +1795,47 @@ display_table(
         """
         ## 5. Results and Interpretation
 
-        The tuned results support six main conclusions.
+        This section separates two questions:
+
+        - **Which model is selected under the pre-specified rolling-CV tuning rule?**
+        - **Which model performs best on the official validation and held-out test splits?**
+
+        ### 5.1 What the Tuning Stage Shows
 
         - The naive persistence rule shows why **`2019` alone is not enough for model choice**:
           it achieves a validation **MAE of about 0.272** but deteriorates to a test **MAE of about 3.645** on `2021-2023`.
         - Within the linear diagnostics, adding lagged economic-growth terms helps:
           test performance moves from roughly **R² = 0.098 / MAE = 2.167** for the core linear specification to **R² = 0.142 / MAE = 2.100** for the lagged-growth linear specification.
         - In the rolling-origin tuning stage, the best **Ridge** setting is a higher-regularization choice (`alpha = 100`), while the best **Gradient Boosting** setting is a shallow tree ensemble with `n_estimators = 100`, `learning_rate = 0.03`, `max_depth = 2`, and `min_samples_leaf = 1`.
-        - In the final tuned comparison, **Ridge Regression** achieves the lowest rolling-CV mean MAE (about **0.848**), while **Gradient Boosting** is a very close second (about **0.856**) and performs best on the official validation split with **MAE ≈ 0.617**.
-        - After refitting on the full training set, the tuned **Gradient Boosting Regressor** gives the strongest held-out test performance in this comparison at roughly **R² = 0.167 / MAE = 1.944**, ahead of tuned **Ridge** at about **R² = 0.115 / MAE = 2.007** and **Linear Regression** at about **R² = 0.142 / MAE = 2.100**.
+        - Under the pre-specified primary criterion, **rolling-CV mean MAE**, tuned **Ridge Regression** is selected because it achieves the lowest average fold error (about **0.848**), narrowly ahead of tuned **Gradient Boosting** (about **0.856**).
+
+        ### 5.2 What the Official Validation and Test Evaluation Shows
+
+        - After refitting the tuned configurations on the full training set, **Gradient Boosting** performs best on the official validation split with **MAE ≈ 0.617**.
+        - On the held-out `2021-2023` test period, **Gradient Boosting** also gives the strongest pooled performance in this comparison at roughly **R² = 0.167 / MAE = 1.944**, ahead of tuned **Linear Regression** at **R² = 0.142 / MAE = 2.100** and tuned **Ridge** at **R² = 0.115 / MAE = 2.007**.
         - The year-by-year held-out figure shows that `2021` is the hardest year, while `2022` and especially `2023` are easier to track.
-        - The same figure also clarifies an important metric nuance:
-          the pooled test `R²` is positive because the model captures broad differences across the full held-out period, but within-year `R²` can still be negative because the cross-metro spread inside a single year is much tighter.
+        - That same figure clarifies an important metric nuance:
+          the pooled test `R²` is positive because the models capture broader differences across the full held-out period, but within-year `R²` can still be negative because the cross-metro spread inside a single year is much tighter.
+
+        ### 5.3 Baseline Selection Decision
+
+        - **Selected reporting baseline:** Ridge Regression on the pruned expanded lagged panel
+        - **Why selected:** lowest rolling-CV mean MAE under the pre-specified tuning rule
+        - **Strongest nonlinear Stat 109B comparison:** Gradient Boosting Regressor
+        - **Simple transparent reference:** Linear Regression with metro fixed effects
+
+        Tuning therefore **does not change the selected baseline model** under the stated selection rule. Ridge remains the reporting baseline because rolling-CV mean MAE is treated as the primary criterion. At the same time, the notebook reports explicitly that tuned Gradient Boosting is the strongest official validation/test performer, so the ranking is not one-dimensional on this small panel.
+
+        ### 5.4 Scientific Interpretation
 
         These results line up with the project objective and the EDA in a coherent way:
 
         - lagged economic dynamics carry substantial predictive signal for future employment growth;
         - lagged satellite summaries add information, but they do not fully solve the forecasting problem on their own;
         - the small panel is sensitive to multicollinearity, so regularization is useful for the linear benchmark;
-        - and a nonlinear tree model is still worth keeping as a standard 109B comparison.
+        - and a nonlinear tree model remains worthwhile as a standard 109B comparison.
 
-        The model choice in this notebook is therefore explicit but nuanced:
-
-        - **Selected reporting baseline:** Ridge Regression on the pruned expanded lagged panel
-        - **Why selected:** lowest rolling-CV mean MAE under the pre-specified tuning criterion
-        - **Strongest nonlinear comparison:** Gradient Boosting Regressor
-        - **Simple reference model:** Linear Regression with metro fixed effects
-
-        Tuning therefore **does not change the selected baseline model** under the stated selection rule. Ridge remains the reporting baseline because rolling-CV mean MAE is treated as the primary criterion. At the same time, the notebook makes clear that tuned Gradient Boosting is the strongest official validation/test performer, so the model ranking is not one-dimensional on this small panel.
-
-        The coefficient and importance plots also give a useful substantive interpretation. Much of the predictive signal still comes from **lagged economic context** plus a smaller set of satellite-change summaries. That pattern is informative for the broader project because it suggests that richer built-up / urban-form features are still likely to matter in the next modeling stage.
+        The coefficient and importance plots add a substantive interpretation. Much of the predictive signal still comes from **lagged economic context** plus a smaller set of satellite-change summaries. That pattern is informative for the broader project because it suggests that richer built-up / urban-form features are still likely to matter in the next modeling stage.
         """
     ),
     md(

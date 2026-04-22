@@ -1,116 +1,169 @@
 # Urban Expansion vs Economic Activity
 
-This project studies whether satellite-observed urban change can help explain or predict **future metro-level economic activity**. The workflow combines NASA Worldview / GIBS imagery, official U.S. economic indicators, exploratory data analysis, and baseline predictive modeling before the planned GHSL-derived spatial features are added.
+This repository studies whether **satellite-observed urban change** can help predict **future metro-level economic activity**. The current deliverables already cover the data pipeline, exploratory data analysis, and a compact but time-aware baseline-model notebook.
 
-## Project Snapshot
+The baseline-model milestone deliverable is:
 
-| Item | Current project status |
+- [`Jenny_baseline_model_selection_and_justification.ipynb`](Jenny_baseline_model_selection_and_justification.ipynb)
+
+## 1. Project At a Glance
+
+| Item | Current status |
 | --- | --- |
-| **Core question** | Do urban expansion signals and night-light changes help predict future GDP, employment, and permits? |
-| **Current scope** | 14 U.S. metros, annual panel from **2013-2023** |
-| **Satellite data** | MODIS RGB composites and VIIRS night-lights summaries |
-| **Economic data** | BEA GDP, BLS employment / unemployment, Census building permits |
-| **Completed stages** | Data pipeline, unified panel construction, EDA, raw-pixel baseline modeling |
-| **Current modeling milestone** | [`Jenny_baseline_model_selection_and_justification.ipynb`](Jenny_baseline_model_selection_and_justification.ipynb) |
-| **Most important next step** | Generate GHSL / built-up spatial features and compare them against the stronger raw-pixel baseline |
+| **Core question** | Do lagged satellite signals help predict future metro-level GDP, employment, and permits? |
+| **Geography** | 14 U.S. metros |
+| **Panel span** | 2013-2023 |
+| **Satellite inputs** | MODIS RGB summaries and VIIRS night-light summaries |
+| **Economic inputs** | BEA GDP, BLS employment / unemployment, Census permits |
+| **Completed stages** | Data pipeline, unified panel construction, EDA, baseline modeling |
+| **Baseline target in the notebook** | `employment_thousands_growth` |
+| **Selected reporting baseline** | **Ridge Regression on the expanded lagged panel** |
+| **Strongest official holdout performer** | **Gradient Boosting Regressor** |
+| **Next scientific milestone** | Add GHSL / built-up spatial features and compare them against the raw-summary baseline |
 
-## Repository Guide
+## 2. Repository Guide
 
-| Artifact | What it does | Why it matters |
+| Artifact | What it contains | Why it matters |
 | --- | --- | --- |
-| [`01_gibs_tile_fetcher_v5.ipynb`](01_gibs_tile_fetcher_v5.ipynb) | Downloads and mosaics MODIS / VIIRS imagery from NASA GIBS | Builds the satellite-image foundation |
-| [`02_economic_data_downloader_v6.ipynb`](02_economic_data_downloader_v6.ipynb) | Pulls BEA, BLS, and Census indicators and merges them into a metro-year panel | Builds the economic target dataset |
-| [`03_raster_preprocessing.ipynb`](03_raster_preprocessing.ipynb) | Reprojects, normalizes, cloud-masks, and stacks raster data | Prepares model-ready image tensors |
-| [`00_Final_EDA_Merged_finalized.ipynb`](00_Final_EDA_Merged_finalized.ipynb) | Main EDA notebook | Establishes the statistical patterns that motivate modeling |
-| [`Jenny_baseline_model_selection_and_justification.ipynb`](Jenny_baseline_model_selection_and_justification.ipynb) | Executed baseline-model notebook | Runs and explains the milestone baseline models end to end |
-| [`scripts/build_baseline_model_notebook.py`](scripts/build_baseline_model_notebook.py) | Regenerates the baseline-model notebook | Keeps the milestone notebook reproducible |
-| [`MODELING_NEXT_STEPS.md`](MODELING_NEXT_STEPS.md) | Modeling roadmap for later milestones | Defines the GHSL / spatial-feature plan and future ablations |
-| [`figures/`](figures/) and [`EDA_Figures/`](EDA_Figures/) | Exported figures used across the project | Stores presentation-ready visuals |
+| [`00_Final_EDA_Merged_finalized.ipynb`](00_Final_EDA_Merged_finalized.ipynb) | Main exploratory analysis notebook | Establishes the empirical motivation for time-aware modeling |
+| [`Jenny_baseline_model_selection_and_justification.ipynb`](Jenny_baseline_model_selection_and_justification.ipynb) | Executed baseline-model milestone notebook | Runs model selection, tuning, evaluation, and interpretation |
+| [`scripts/build_baseline_model_notebook.py`](scripts/build_baseline_model_notebook.py) | Notebook generator | Rebuilds the notebook and exports the baseline figures |
+| [`MODELING_NEXT_STEPS.md`](MODELING_NEXT_STEPS.md) | Modeling roadmap | Defines the GHSL / spatial-feature stage and planned ablations |
+| [`01_gibs_tile_fetcher_v5.ipynb`](01_gibs_tile_fetcher_v5.ipynb) | Satellite data acquisition | Downloads and mosaics NASA GIBS imagery |
+| [`02_economic_data_downloader_v6.ipynb`](02_economic_data_downloader_v6.ipynb) | Economic data construction | Builds the metro-year target panel |
+| [`03_raster_preprocessing.ipynb`](03_raster_preprocessing.ipynb) | Raster preprocessing pipeline | Produces cleaned, aligned satellite tensors |
+| [`figures/`](figures/) | Presentation-ready exported visuals | Stores EDA and baseline-model figures used across the project |
 
-## Current Modeling Panel
+## 3. Baseline Modeling Setup
+
+### 3.1 Effective sample and split
 
 | Component | Value |
 | --- | --- |
-| **Metros** | 14: Atlanta, Austin, Charlotte, Dallas, Denver, Houston, Jacksonville, Las Vegas, Nashville, Orlando, Phoenix, Raleigh, San Antonio, Tampa |
-| **Panel rows** | 140 metro-year observations |
-| **Time split** | Train: 84 rows (`2013-2018`), Validation: 14 rows (`2019`), Test: 42 rows (`2021-2023`) |
+| **Target** | `employment_thousands_growth` |
+| **Raw panel rows** | 140 metro-year observations |
+| **Rows used for modeling** | 126 observations with a defined growth target |
+| **Training years** | `2014-2018` |
+| **Validation year** | `2019` |
+| **Held-out test years** | `2021-2023` |
 | **Excluded year** | `2020`, treated as a COVID structural break |
-| **Current target in the baseline notebook** | `employment_thousands_growth` |
-| **Current predictors** | Conservative lagged raw-pixel summaries for the baseline family, plus a pruned expanded lagged panel for the regularized benchmark |
-| **Why this is still only a baseline** | The project's central built-up / urban-form features are not yet in the panel |
+| **Leakage control** | All predictive features are lagged; all splits are time-based |
 
-## Baseline Modeling Results
+### 3.2 Baseline models in the notebook
 
-The current baseline notebook is intentionally stronger than a superficial benchmark. It first explains why the original held-out `R²` looked weak, then compares a transparent fixed-effects-style model, a stronger regularized linear benchmark, and a nonlinear 109B baseline.
+| Model | Why it is included | Role |
+| --- | --- | --- |
+| **Linear Regression with metro fixed effects** | Simplest interpretable benchmark | Transparent reference model |
+| **Ridge Regression on an expanded lagged panel** | Keeps linear interpretability while handling a small, collinear feature space | **Selected reporting baseline** |
+| **Gradient Boosting Regressor** | Standard Stat 109B nonlinear comparison that can capture interactions and thresholds | Strong nonlinear comparator |
 
-| Model | Test R^2 | Test MAE | Interpretation |
-| --- | ---: | ---: | --- |
-| **Linear Regression (fixed effects)** | 0.142 | 2.100 | Transparent benchmark closest to the planned panel-regression stage |
-| **Ridge Regression (expanded lagged panel)** | 0.233 | 1.843 | **Highlighted current raw-pixel benchmark** after adding a broader lagged panel and regularization |
-| **Gradient Boosting Regressor** | 0.180 | 1.936 | Most stable nonlinear 109B baseline across the pre-period checks |
+## 4. Time-Aware Cross-Validation Workflow
 
-| Sanity check | Validation MAE | Test MAE | Why it matters |
-| --- | ---: | ---: | --- |
-| **Naive persistence benchmark** | 0.272 | 3.645 | Shows why `2019` alone is too fragile to trust as the only model-selection criterion |
+The baseline notebook separates **tuning** from **official evaluation**.
 
-## What The EDA Already Established
+| Stage | Years used | Purpose |
+| --- | --- | --- |
+| **Rolling-origin CV fold 1** | train on years before `2016`, validate on `2016` | Hyperparameter tuning |
+| **Rolling-origin CV fold 2** | train on years before `2017`, validate on `2017` | Hyperparameter tuning |
+| **Rolling-origin CV fold 3** | train on years before `2018`, validate on `2018` | Hyperparameter tuning |
+| **Official validation** | `2019` | Model reporting only, not tuning |
+| **Held-out test** | `2021-2023` | Final evaluation only |
 
-| EDA takeaway | Why it matters for modeling |
+The notebook uses **rolling-CV mean MAE** as the primary tuning criterion and reports rolling-CV mean `R^2` as secondary context.
+
+### 4.1 Split structure
+
+![Official split and rolling-origin CV protocol](figures/15_baseline_cv_protocol.png)
+
+This visual makes the evaluation design explicit:
+
+- the top row is the official train / validation / test split used for reporting;
+- the lower rows are the historical rolling-origin folds used only for tuning;
+- `2020` is excluded throughout.
+
+### 4.2 Compact tuning search
+
+![Compact hyperparameter tuning summary](figures/16_baseline_tuning_summary.png)
+
+The search is intentionally light:
+
+| Model | Search space |
 | --- | --- |
-| Raw pooled pixel summaries are weak across cities | Cross-city pooling alone is not enough |
-| Within-metro temporal structure is much stronger | Time-aware panel modeling is the right direction |
-| GHSL built-up change looks more promising than raw pixel summaries | Later spatial-feature stages are scientifically important |
+| **Linear Regression** | no tuning |
+| **Ridge Regression** | `alpha ∈ {0.01, 0.1, 1, 10, 100}` |
+| **Gradient Boosting** | small grid over `n_estimators`, `learning_rate`, `max_depth`, and `min_samples_leaf` |
 
-## Essential Visuals
+This keeps the notebook defensible as a **baseline study** rather than a large optimization exercise.
 
-### 1. EDA signal before modeling
+## 5. Baseline Selection and Official Results
+
+### 5.1 Selection rule
+
+| Decision question | Answer |
+| --- | --- |
+| **Primary selection rule** | Lowest rolling-origin CV mean MAE |
+| **Selected reporting baseline** | **Ridge Regression (expanded lagged panel)** with `alpha = 100` |
+| **Why Ridge is selected** | It has the best average rolling-CV MAE under the pre-specified rule |
+| **Strongest official validation / test performer** | **Gradient Boosting Regressor** with `100 trees`, `lr = 0.03`, `depth = 2`, `leaf = 1` |
+| **Interpretation** | The small panel does not yield a one-number ranking, so the notebook reports both the selection rule and the holdout winner clearly |
+
+### 5.2 Final model comparison
+
+| Model | Selected hyperparameters | Rolling CV Mean MAE | Rolling CV Mean R^2 | Validation MAE | Test MAE | Test R^2 | Role |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
+| **Linear Regression (fixed effects)** | default | 1.129 | -2.122 | 1.605 | 2.100 | 0.142 | Simple reference model |
+| **Ridge Regression (expanded lagged panel)** | `alpha = 100` | **0.848** | -0.706 | 0.744 | 2.007 | 0.115 | **Selected reporting baseline** |
+| **Gradient Boosting Regressor** | `100 trees`, `lr = 0.03`, `depth = 2`, `leaf = 1` | 0.856 | **-0.162** | **0.617** | **1.944** | **0.167** | Strongest nonlinear comparison |
+
+## 6. Essential Modeling Visuals
+
+### 6.1 Rolling-CV stability vs official holdout comparison
+
+<p align="center">
+  <img src="figures/08_rolling_validation_stability.png" alt="Rolling-origin validation stability" width="49%" />
+  <img src="figures/07_baseline_model_comparison.png" alt="Official validation and held-out test comparison" width="49%" />
+</p>
+
+Read these two figures together:
+
+- the left panel shows how each tuned model behaves across the historical rolling holdout years;
+- the right panel shows official validation and held-out test performance after refitting on the full training window.
+
+### 6.2 Selected baseline diagnostics
+
+<p align="center">
+  <img src="figures/10_benchmark_yearwise_performance.png" alt="Selected baseline performance by held-out year" width="49%" />
+  <img src="figures/09_baseline_feature_importance.png" alt="Selected baseline feature interpretation" width="49%" />
+</p>
+
+These figures answer two practical follow-up questions:
+
+- how the selected baseline behaves across `2021`, `2022`, and `2023`;
+- which lagged feature groups contribute most to its predictions.
+
+## 7. EDA Anchor
 
 ![Cross-correlation heatmap](figures/06_cross_correlation_heatmap.png)
 
-This figure summarizes the strongest current EDA message: **within-metro temporal relationships are more informative than pooled cross-city comparisons**, which is exactly why the baseline notebook uses lagged features and a time-aware split.
+The EDA already suggested that **within-metro temporal relationships are more useful than pooled cross-city relationships**. That is exactly why the baseline-model notebook uses lagged predictors, time-based splits, and rolling-origin validation instead of random cross-validation.
 
-### 2. Baseline model stability and held-out comparison
+## 8. Reading Order
 
-<p align="center">
-  <img src="figures/08_rolling_validation_stability.png" alt="Rolling validation stability" width="49%" />
-  <img src="figures/07_baseline_model_comparison.png" alt="Final baseline model comparison" width="49%" />
-</p>
+| If you want to understand... | Start here |
+| --- | --- |
+| **The exploratory evidence behind the project** | [`00_Final_EDA_Merged_finalized.ipynb`](00_Final_EDA_Merged_finalized.ipynb) |
+| **The baseline-model milestone deliverable** | [`Jenny_baseline_model_selection_and_justification.ipynb`](Jenny_baseline_model_selection_and_justification.ipynb) |
+| **What the next modeling stage should do** | [`MODELING_NEXT_STEPS.md`](MODELING_NEXT_STEPS.md) |
 
-The left panel shows why model selection should not depend on a single validation year. The right panel shows the final held-out comparison across the three revised baseline models.
+## 9. Reproducibility
 
-### 3. What the highlighted benchmark is doing by test year
-
-![Year-by-year benchmark performance](figures/10_benchmark_yearwise_performance.png)
-
-This figure replaces the earlier pooled scatter. It makes the key point much clearer: the current benchmark struggles most in `2021`, improves in `2022`, and is noticeably tighter in `2023`. That is a more informative summary of the held-out behavior than one dense identity-line plot.
-
-### 4. What the highlighted benchmark is actually using
-
-![Selected-model feature importance](figures/09_baseline_feature_importance.png)
-
-The Ridge benchmark still draws substantial signal from **lagged satellite-change summaries plus lagged economic context**. That is an important research finding because it sets a clearer and harder-to-beat bar for the future GHSL-derived feature set.
-
-## Current Conclusion
-
-1. The project already has a clean, reproducible baseline modeling milestone.
-2. The current notebook answers the narrower question, "How far can raw satellite summaries take us before richer spatial features are ready?"
-3. The next real scientific test is whether **built-up / urban-form features** outperform this stronger raw-pixel benchmark.
-
-## Recommended Reading Order
-
-1. Start with [`00_Final_EDA_Merged_finalized.ipynb`](00_Final_EDA_Merged_finalized.ipynb) for the full EDA story.
-2. Read [`Jenny_baseline_model_selection_and_justification.ipynb`](Jenny_baseline_model_selection_and_justification.ipynb) for the current modeling milestone.
-3. Use [`MODELING_NEXT_STEPS.md`](MODELING_NEXT_STEPS.md) to see exactly how the GHSL / spatial-feature stage will extend this work.
-
-## Reproducibility
-
-To regenerate the baseline notebook file:
+To regenerate the notebook and the exported baseline figures:
 
 ```bash
 python3 scripts/build_baseline_model_notebook.py
 ```
 
-The notebook generator writes directly to:
+The generator writes directly to:
 
 ```text
 Jenny_baseline_model_selection_and_justification.ipynb
