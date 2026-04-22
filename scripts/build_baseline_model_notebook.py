@@ -73,10 +73,8 @@ cells = [
            preprocessing, feature families, parameter choices, rolling validation, and evaluation metrics.
         5. **[Results and Interpretation](#5.-Results-and-Interpretation)**:
            what the baseline results mean scientifically and how they connect back to the proposal.
-        6. **[Scope, Limitations, and Next Steps](#6.-Scope,-Limitations,-and-Next-Steps)**:
-           what this notebook covers, what remains outside scope, and what should happen next.
-        7. **[Requirement Coverage](#7.-Requirement-Coverage)**:
-           where each required deliverable component is addressed in the notebook.
+        6. **[Next Steps](#6.-Next-Steps)**:
+           the immediate modeling steps that follow this baseline stage.
         """
     ),
     md(
@@ -1460,27 +1458,7 @@ display_table(
     ),
     md(
         """
-        ## 6. Scope, Limitations, and Next Steps
-
-        This notebook is intentionally scoped as a baseline study within the broader proposal.
-        It aligns with `MODELING_NEXT_STEPS.md` in the following ways:
-
-        - it uses the project's **time-aware train / val / test split**
-        - it predicts a **future economic change target**
-        - it includes a simple **linear fixed-effects-style baseline**
-        - it includes an interpretable **regularized linear baseline**
-        - it includes a Stat 109B nonlinear baseline
-        - it evaluates with **R², RMSE, and MAE**
-        - it treats the analysis as a **raw-satellite-summary baseline before GHSL-derived spatial features**
-
-        It also has clear limitations:
-
-        - the proposal's main scientific claim is about **urban expansion / built-up growth**
-        - the current panel still lacks those explicit spatial features
-        - the notebook covers **one outcome** (`employment_thousands_growth`) rather than the full target set in the proposal
-        - the panel is small, so model rankings should be interpreted with appropriate caution
-
-        The next modeling steps are therefore:
+        ## 6. Next Steps
 
         | Next step | Why it matters | What success would look like |
         | --- | --- | --- |
@@ -1488,24 +1466,6 @@ display_table(
         | **Run the planned feature-set ablations** | This directly tests the Stage 3 plan in `MODELING_NEXT_STEPS.md`. | Compare raw-only vs spatial-only vs combined vs spatial-plus-economic-lags. |
         | **Replicate the same benchmark structure for GDP and permits** | This broadens the milestone from one outcome to the proposal's wider economic story. | The exact same train/val/test logic applied to additional targets. |
         | **Add sensitivity checks across metros or regions** | This tests whether performance is driven by a few cities. | Similar conclusions under leave-one-metro-out or expanded geography checks. |
-        """
-    ),
-    md(
-        """
-        ## 7. Requirement Coverage
-
-        The notebook covers the requested deliverable components as follows:
-
-        | Requirement | Where it is addressed |
-        | --- | --- |
-        | **Baseline model selection and justification** | Section 1, with a model-choice table and prose rationale tied to simplicity, interpretability, and relevance |
-        | **At least one 109B model** | Sections 1 and 4, where Gradient Boosting is included and explained as the nonlinear 109B baseline |
-        | **Data definition and train/test setup** | Section 2, including the panel size, target definition, split table, and row-filtering explanation |
-        | **Whether the entire dataset was considered** | Section 2, where the notebook explains that the whole available modeling panel is used except rows with undefined growth targets |
-        | **Training process, preprocessing, and parameter choices** | Section 4, including feature families, imputation, scaling, sparsity control, and model settings |
-        | **Evaluation metrics and why they are appropriate** | Section 4, with explicit rationale for `R²`, `RMSE`, and `MAE` |
-        | **Initial results with tables and plots** | Sections 3, 4, and 5, which include diagnostic tables, comparison tables, stability plots, held-out visualizations, and coefficient / importance summaries |
-        | **Interpretation and connection to project objectives** | Sections 5 and 6, where the notebook explains what the current benchmark means and what remains unresolved |
         """
     ),
 ]
