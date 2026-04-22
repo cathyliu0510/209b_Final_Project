@@ -36,28 +36,25 @@ cells = [
         """
         # Baseline Model Selection and Justification
 
-        This notebook is the **baseline-model milestone** for the project, but it also takes a critical step back and asks whether the first baseline formulation was actually the right one.
+        This notebook presents the baseline modeling workflow for the project question:
+        whether lagged satellite summaries and lagged economic indicators can help predict **future metro-level economic change**.
 
-        The proposal asks whether **urban expansion / night-light changes** can help explain or predict **future metro-level economic activity**. The `MODELING_NEXT_STEPS.md` file turns that idea into a Stage 3 panel-regression baseline with:
+        The proposal and `MODELING_NEXT_STEPS.md` imply a time-aware panel baseline with:
 
         - lagged predictors
         - metro fixed effects
         - train / validation / test split by year
         - comparison across interpretable and nonlinear models
 
-        A research-scientist reading of the first baseline revealed three weaknesses:
+        The notebook estimates three baseline models:
 
-        1. it did **not** fully use the problem's forecasting structure, because it omitted lagged economic-growth terms that are natural baselines for future change prediction;
-        2. it relied heavily on a **single validation year (`2019`)**, which is noisy for a small panel;
-        3. it produced a pooled held-out scatter plot that looked weak because the test period itself is highly heterogeneous, especially across `2021`, `2022`, and `2023`.
+        - **Linear Regression with metro fixed effects**
+        - **Ridge Regression on an expanded lagged panel**
+        - **Gradient Boosting Regressor**
 
-        So this revised notebook does two things:
+        The selected baseline for reporting is **Ridge Regression on the expanded lagged panel** because it offers the best held-out performance while remaining interpretable and well suited to a small, collinear predictor set. **Gradient Boosting** is retained as the main nonlinear Stat 109B comparison model, and **Linear Regression** serves as the simplest transparent reference.
 
-        - it builds a stronger, still-defensible baseline using **lagged raw satellite summaries + lagged economic dynamics**;
-        - it adds a second-pass **regularized linear benchmark** on a broader lagged panel;
-        - it evaluates models with both the official `2019` validation split **and** a small **rolling-origin validation check** on earlier train years.
-
-        This notebook still does **not** answer the full proposal, because the planned **GHSL-derived built-up footprint features** are not yet available. Instead, it provides the best current answer to a narrower milestone question:
+        The notebook focuses on one target, **`employment_thousands_growth`**, so that the baseline can be presented cleanly from start to finish before the same framework is extended to additional outcomes.
 
         > **How far can we get with lagged raw satellite summaries and standard tabular baselines before the richer spatial features are ready?**
         """
@@ -70,15 +67,15 @@ cells = [
            why these three models are included, and how they map to simplicity, interpretability, and project relevance.
         2. **[Data Used for Training and Testing](#2.-Data-Used-for-Training-and-Testing)**:
            what data are used, what rows are excluded, and why the target distribution itself makes this forecasting problem difficult.
-        3. **[Diagnostic Check](#3.-Diagnostic-Check:-Did-the-Original-Baseline-Miss-an-Important-Signal?)**:
-           why the first baseline underperformed, and why one validation year is not enough.
-        4. **[Training Protocol](#4.-Training-Protocol-for-the-Improved-Baseline-Comparison)**:
+        3. **[Forecasting Difficulty and Sanity Checks](#3.-Forecasting-Difficulty-and-Sanity-Checks)**:
+           how target shift, naive persistence, and linear diagnostics help frame the forecasting task.
+        4. **[Training Protocol](#4.-Training-Protocol-for-the-Final-Baseline-Comparison)**:
            preprocessing, feature families, parameter choices, rolling validation, and evaluation metrics.
-        5. **[Initial Results and Alignment](#5.-Initial-Results-and-Alignment-with-Expectations)**:
+        5. **[Results and Interpretation](#5.-Results-and-Interpretation)**:
            what the baseline results mean scientifically and how they connect back to the proposal.
-        6. **[Conformance, Remaining Gaps, and Next Steps](#6.-Conformance,-Remaining-Gaps,-and-Next-Steps)**:
-           what this milestone already delivers and what still needs to happen next.
-        7. **[Milestone Checklist](#7.-Milestone-Checklist)**:
+        6. **[Scope, Limitations, and Next Steps](#6.-Scope,-Limitations,-and-Next-Steps)**:
+           what this notebook covers, what remains outside scope, and what should happen next.
+        7. **[Requirement Coverage](#7.-Requirement-Coverage)**:
            where each required deliverable component is addressed in the notebook.
         """
     ),
@@ -86,35 +83,37 @@ cells = [
         """
         ## Executive Summary
 
-        For a reader grading this as a milestone deliverable, the main message is:
+        Three baseline models are compared in this notebook:
+        **Linear Regression with metro fixed effects**, **Ridge Regression on an expanded lagged panel**, and **Gradient Boosting Regressor**.
 
-        - the notebook now makes a clear case for **why these baseline models were chosen**;
-        - it shows **why the first low `R²` result happened**, rather than hiding it;
-        - it improves the current raw-pixel benchmark from roughly **`R² = 0.142 / MAE = 2.100`** to about **`R² = 0.233 / MAE = 1.843`**;
-        - and it does so while staying honest that the project's central scientific test still depends on the future GHSL-derived spatial features.
+        The selected model is **Ridge Regression on the expanded lagged panel** because it balances:
 
-        In other words, this notebook is designed to be read as a **clean, defendable baseline milestone**, not as the final research claim.
+        - the strongest held-out test performance in this comparison;
+        - a linear, still-interpretable structure;
+        - and better behavior under multicollinearity than an unregularized regression.
+
+        The main empirical takeaway is that lagged economic dynamics carry substantial predictive signal, while lagged raw satellite summaries add useful but still limited information. The notebook therefore establishes a clear raw-summary baseline for the project, while also showing that the later GHSL / built-up feature stage remains important.
         """
     ),
     md(
         """
-        ## Project Status Snapshot
+        ## Project Context
 
-        This notebook is easiest to read in the context of the **overall project plan** rather than as a standalone modeling exercise.
+        This notebook fits into the broader project pipeline as the baseline modeling stage.
 
         | Project component | Current status | What is already known |
         | --- | --- | --- |
         | **Data pipeline** | Completed | Satellite imagery, economic indicators, and the unified metro-year panel are already built. |
         | **EDA** | Completed | Raw pixel summaries are weak across pooled cities, but within-metro temporal structure is meaningful. |
-        | **Raw-pixel baseline modeling** | Completed in this notebook | We now have a defensible benchmark before richer spatial features exist. |
+        | **Raw-summary baseline modeling** | Completed in this notebook | Provides the reference results using lagged satellite summaries and lagged economic indicators. |
         | **GHSL / built-up segmentation and spatial feature extraction** | Not yet completed | This is still the key missing ingredient for answering the full proposal. |
-        | **Final scientific comparison** | Pending | The real test will be whether built-up / urban-form features outperform the raw-pixel baseline established here. |
+        | **Final scientific comparison** | Pending | The key comparison will be whether built-up / urban-form features outperform the baseline established here. |
 
-        So the role of this notebook is very specific:
+        The role of this notebook is therefore specific:
 
-        - it is **not** the final answer to the proposal;
-        - it **is** the benchmark that later GHSL-derived features will need to beat;
-        - it should therefore be evaluated on **clarity, honesty, and robustness**, not just on getting the highest possible score.
+        - it defines the project's tabular baseline under the planned time split;
+        - it uses raw satellite summaries rather than explicit built-up spatial features;
+        - it establishes the reference results that later feature sets will be compared against.
         """
     ),
     code(
@@ -167,8 +166,8 @@ cells = [
         }
 
         diagnostic_palette = {
-            "Current Linear Baseline": "#94a3b8",
-            "Enhanced Linear Baseline": "#0f766e",
+            "Linear model: core lagged set": "#94a3b8",
+            "Linear model: lagged-growth set": "#0f766e",
         }
 
         year_palette = {
@@ -247,27 +246,27 @@ cells = [
         """
         ## 1. Baseline Model Selection and Justification
 
-        The final model set keeps the project squarely in "baseline" territory while still being strong enough to be informative. The choice is driven by exactly the criteria in the milestone prompt:
+        The model set is chosen using the three criteria in the assignment prompt:
 
         - **simplicity**: there should be at least one transparent benchmark;
         - **interpretability**: we should be able to explain what the model is learning and why;
         - **relevance to the project statement**: the model should make sense for forecasting future metro-level economic change from lagged satellite and economic signals.
 
-        | Model | Why include it | Why it is defensible for this milestone |
+        | Model | Role in the notebook | Why it is included |
         | --- | --- | --- |
-        | **Linear Regression with metro fixed effects** | Simplest interpretable benchmark | Closest to the Stage 3 panel-regression idea. Metro dummies act as fixed effects. |
-        | **Ridge Regression on an expanded lagged panel** | Regularized linear upgrade | Still interpretable, but better suited to a small, collinear lagged feature set than an unregularized linear model. |
-        | **Gradient Boosting Regressor** | Nonlinear Stat 109B baseline | Captures interactions and thresholds without needing a huge dataset. This keeps a clear 109B model in the final comparison. |
+        | **Linear Regression with metro fixed effects** | Simple reference model | Closest to a classic panel-regression baseline. Metro dummies absorb level differences across cities. |
+        | **Ridge Regression on an expanded lagged panel** | Selected baseline | Retains a linear structure but is better suited to a small, highly collinear lagged feature set. |
+        | **Gradient Boosting Regressor** | Nonlinear Stat 109B comparison | Captures interactions and threshold effects while remaining standard and easy to justify as a baseline tree ensemble. |
 
         We focus on **`employment_thousands_growth`** as the target because it best matches the proposal's "**future economic changes**" framing. Predicting growth is harder than predicting levels, but it is the more honest benchmark for this stage of the project.
 
         We also deliberately keep the milestone scoped to **one target** rather than trying to model GDP, employment, and permits all at once. That tradeoff keeps the notebook readable and lets us build one benchmark carefully before scaling the exact same evaluation structure to the other outcomes.
 
-        The notebook still screens other ideas during the error-analysis phase, but these three models form the final polished comparison because they give the clearest contrast between:
+        The selected model is **Ridge Regression on the expanded lagged panel**. It is selected because it combines:
 
-        - a transparent fixed-effects-style baseline,
-        - a stronger regularized linear benchmark,
-        - and a nonlinear 109B reference model.
+        - the best held-out test metrics in the final comparison;
+        - a linear coefficient-based structure that remains interpretable;
+        - and regularization that is appropriate for correlated lagged predictors.
         """
     ),
     md(
@@ -456,7 +455,7 @@ cells = [
                 {
                     "Feature family": "Conservative enhanced baseline",
                     "Columns retained": "11 lagged satellite + economic-level features, plus 3 lagged growth terms",
-                    "Why it exists": "Closest continuation of the original baseline design",
+                    "Why it exists": "Compact lagged panel for transparent baseline models",
                 },
                 {
                     "Feature family": "Expanded lagged panel",
@@ -521,7 +520,7 @@ cells = [
         )
         display_table(
             feature_group_table,
-            caption="Feature families used in the revised modeling pass",
+            caption="Feature families used in the final baseline comparison",
             left_align=["Feature family", "Columns retained", "Why it exists"],
         )
         display_table(
@@ -546,22 +545,23 @@ cells = [
     ),
     md(
         """
-        ## 3. Diagnostic Check: Did the Original Baseline Miss an Important Signal?
+        ## 3. Forecasting Difficulty and Sanity Checks
 
-        Before comparing nonlinear models, we run **two sanity checks**.
+        Before comparing the final three baselines, the notebook establishes why this forecasting task is difficult and what a reasonable baseline should capture.
 
-        First, we ask whether a **naive persistence rule** ("next year's employment growth will look like last year's") can be trusted as a model-selection guide. This matters because the project's formal validation set is only one year (`2019`), and a tiny validation slice can make fragile models look better than they really are.
+        First, it evaluates a **naive persistence rule**:
+        "next year's employment growth will look like last year's."
+        This is a useful sanity check because the formal validation set is only one year (`2019`), and a single calm year can make a simple rule look stronger than it really is.
 
-        Second, we ask a simpler modeling question:
+        Second, it compares two linear specifications:
+        one using a compact lagged feature set, and one that also includes lagged economic-growth terms.
 
-        > **If we keep the model linear, does adding lagged economic-growth information improve the baseline?**
+        Together, these checks clarify four issues:
 
-        Together, these checks separate three different issues:
-
-        - whether the low first-pass `R²` was partly a **distribution-shift problem** rather than only a model problem;
-        - whether a **single validation year** is enough to trust;
-        - whether **feature engineering** matters even before nonlinear models are introduced;
-        - and whether later model gains reflect **better features**, **more flexible model families**, or both.
+        - how different the train, validation, and held-out target distributions are;
+        - whether a **single validation year** is enough to guide model choice;
+        - whether lagged economic dynamics add useful predictive signal;
+        - and how much room there is for a nonlinear model to add value beyond linear structure.
         """
     ),
     code(
@@ -676,8 +676,8 @@ cells = [
 
         diagnostic_rows = []
         diagnostic_models = {
-            "Current Linear Baseline": current_numeric_features,
-            "Enhanced Linear Baseline": enhanced_numeric_features,
+            "Linear model: core lagged set": current_numeric_features,
+            "Linear model: lagged-growth set": enhanced_numeric_features,
         }
 
         for label, numeric_features in diagnostic_models.items():
@@ -688,8 +688,8 @@ cells = [
                 predictions = pipeline.predict(split_df[categorical_features + numeric_features])
                 diagnostic_rows.append(
                     {
-                        "Model": label,
-                        "Split": split_name,
+                "Model": label,
+                "Split": split_name,
                         "R2": r2_score(split_df[target], predictions),
                         "RMSE": rmse(split_df[target], predictions),
                         "MAE": mean_absolute_error(split_df[target], predictions),
@@ -707,8 +707,8 @@ cells = [
         diagnostic_test = diagnostic_results[diagnostic_results["Split"] == "Test"].copy()
         diagnostic_test["Plot label"] = diagnostic_test["Model"].map(
             {
-                "Current Linear Baseline": "Current linear",
-                "Enhanced Linear Baseline": "Enhanced linear",
+                "Linear model: core lagged set": "Core linear",
+                "Linear model: lagged-growth set": "Linear + growth lags",
             }
         )
 
@@ -718,7 +718,7 @@ cells = [
             data=diagnostic_test,
             y="Plot label",
             x="R2",
-            order=["Enhanced linear", "Current linear"],
+            order=["Linear + growth lags", "Core linear"],
             hue="Model",
             palette=diagnostic_palette,
             legend=False,
@@ -733,7 +733,7 @@ cells = [
             data=diagnostic_test,
             y="Plot label",
             x="MAE",
-            order=["Enhanced linear", "Current linear"],
+            order=["Linear + growth lags", "Core linear"],
             hue="Model",
             palette=diagnostic_palette,
             legend=False,
@@ -758,21 +758,16 @@ cells = [
     ),
     md(
         """
-        ## 4. Training Protocol for the Improved Baseline Comparison
+        ## 4. Training Protocol for the Final Baseline Comparison
 
-        The error analysis above suggests that the project needs **two different baseline lenses**:
+        The final comparison uses two feature families:
 
-        1. a **conservative baseline family** that stays close to the original forecasting setup;
-        2. a **stronger upgraded benchmark** that makes better use of the available lagged panel without becoming a black box.
-
-        **Feature families used in the final comparison**
-
-        - **Linear Regression (fixed effects)** and **Gradient Boosting** use the conservative enhanced feature set:
+        - **Linear Regression (fixed effects)** and **Gradient Boosting** use a compact lagged feature set:
           lagged raw satellite summaries, lagged economic levels, lagged economic growth terms, and metro fixed effects.
-        - **Ridge Regression** uses the broader pruned expanded lagged panel:
+        - **Ridge Regression** uses a broader pruned expanded lagged panel:
           richer lagged satellite summaries, lagged changes, lagged economic ratios, lagged growth terms, and metro fixed effects.
 
-        That upgrade is purposeful. The raw-pixel panel is small and highly collinear, so a regularized linear model is a more appropriate second-pass benchmark than simply adding more columns to an unregularized regression.
+        This design keeps the comparison readable while still letting the selected model use a richer lagged panel. The raw-satellite feature space is small and highly collinear, so a regularized linear model is a natural choice for the broader specification.
 
         **Evaluation protocol**
 
@@ -782,11 +777,11 @@ cells = [
         - train on years before 2017, validate on 2017
         - train on years before 2018, validate on 2018
 
-        That rolling check is not meant to replace the official split. It is there to answer a research-scientist question:
+        That rolling check does not replace the official split. It is included to answer a practical model-selection question:
 
         > **Which model looks most stable across several historical holdout years, not just one?**
 
-        The persistence sanity check above shows exactly why this matters: a model can look excellent on `2019` and still generalize poorly to the real held-out period.
+        The persistence sanity check shows why this matters: a model can look good on `2019` and still generalize poorly to the true held-out period.
 
         **Preprocessing**
 
@@ -812,7 +807,7 @@ cells = [
         - **RMSE**: penalizes larger forecasting errors more heavily
         - **MAE**: easiest to interpret as average prediction error in percentage points
 
-        Because the test period is heterogeneous, the notebook also reports **year-by-year diagnostics** for the showcased benchmark rather than relying on one pooled scatter alone.
+        Because the test period is heterogeneous, the notebook also reports **year-by-year diagnostics** for the selected model rather than relying on one pooled scatter alone.
         """
     ),
     code(
@@ -869,13 +864,13 @@ cells = [
                 "pipeline": make_linear_pipeline(enhanced_numeric_features),
                 "features": enhanced_numeric_features,
                 "feature_family": "Conservative enhanced lagged panel",
-                "role": "Transparent fixed-effects-style reference",
+                "role": "Transparent fixed-effects reference",
             },
             "Ridge Regression (expanded lagged panel)": {
                 "pipeline": make_ridge_pipeline(pruned_expanded_numeric_features, alpha=1.0),
                 "features": pruned_expanded_numeric_features,
                 "feature_family": "Pruned expanded lagged panel",
-                "role": "Highlighted current raw-pixel benchmark",
+                "role": "Selected baseline",
             },
             "Gradient Boosting Regressor": {
                 "pipeline": make_tree_pipeline(
@@ -889,7 +884,7 @@ cells = [
                 ),
                 "features": enhanced_numeric_features,
                 "feature_family": "Conservative enhanced lagged panel",
-                "role": "Most stable nonlinear 109B baseline",
+                "role": "Nonlinear Stat 109B comparison",
             },
         }
 
@@ -1005,17 +1000,23 @@ cells = [
         benchmark_summary = pd.DataFrame(
             [
                 {
-                    "Highlighted model": benchmark_model_name,
-                    "Why it is highlighted": "It produces the strongest current held-out raw-pixel regression performance after the error-analysis redesign.",
-                    "Important caveat": "Gradient Boosting remains the more stable pre-period baseline under rolling validation and 2019 validation.",
+                    "Selected model": benchmark_model_name,
+                    "Test R2": comparison_results.loc[
+                        comparison_results["Model"] == benchmark_model_name, "Test R2"
+                    ].iloc[0],
+                    "Test MAE": comparison_results.loc[
+                        comparison_results["Model"] == benchmark_model_name, "Test MAE"
+                    ].iloc[0],
+                    "Why it is selected": "It produces the strongest held-out test performance while remaining interpretable and well matched to a collinear lagged panel.",
+                    "Complementary note": "Gradient Boosting remains the most stable nonlinear model across the rolling pre-period validation years.",
                 }
             ]
         )
         display_table(
             benchmark_summary,
-            caption="How to read the comparison table",
+            caption="How to read the final comparison table",
             precision=3,
-            left_align=["Highlighted model", "Why it is highlighted", "Important caveat"],
+            left_align=["Selected model", "Why it is selected", "Complementary note"],
         )
 
         rolling_results = pd.DataFrame(rolling_detail_rows)
@@ -1051,7 +1052,20 @@ cells = [
         ax.set_xlabel("Validation year")
         ax.set_ylabel("MAE (percentage points)")
         ax.set_xticks(sorted(rolling_results["Holdout year"].unique()))
-        ax.legend(title="Model", loc="upper left")
+        ax.legend(title="Model", loc="upper center", bbox_to_anchor=(0.5, 1.02), ncol=1)
+        ymin, ymax = ax.get_ylim()
+        yoffset = 0.02 * (ymax - ymin)
+        for line in ax.lines:
+            for x, y in zip(line.get_xdata(), line.get_ydata()):
+                ax.text(
+                    x,
+                    y + yoffset,
+                    f"{y:.2f}",
+                    ha="center",
+                    va="bottom",
+                    fontsize=9,
+                    color=line.get_color(),
+                )
         plt.tight_layout()
         plt.savefig(FIGURES_DIR / "08_rolling_validation_stability.png", dpi=220, bbox_inches="tight", facecolor="white")
         plt.show()
@@ -1080,7 +1094,7 @@ cells = [
         plot_order = comparison_results["Model"].tolist()
         plot_labels = {
             "Linear Regression (fixed effects)": "Linear FE",
-            "Ridge Regression (expanded lagged panel)": "Ridge (expanded)",
+            "Ridge Regression (expanded lagged panel)": "Ridge (selected)",
             "Gradient Boosting Regressor": "Gradient Boosting",
         }
         comparison_plot = comparison_results.copy()
@@ -1134,6 +1148,13 @@ benchmark_row = comparison_results[comparison_results["Model"] == benchmark_mode
 prediction_df = test_df[["metro", "year", target]].copy()
 prediction_df["prediction"] = benchmark_test_pred
 prediction_df["metro_label"] = prediction_df["metro"].str.replace("_", " ").str.title()
+metro_order = (
+    prediction_df.groupby("metro_label")[target]
+    .mean()
+    .sort_values(ascending=True)
+    .index
+    .tolist()
+)
 
 year_metric_rows = []
 for year, group in prediction_df.groupby("year"):
@@ -1142,7 +1163,7 @@ for year, group in prediction_df.groupby("year"):
             "Test year": year,
             "MAE": mean_absolute_error(group[target], group["prediction"]),
             "RMSE": rmse(group[target], group["prediction"]),
-            "R2": r2_score(group[target], group["prediction"]),
+            "Within-year R2": r2_score(group[target], group["prediction"]),
         }
     )
 benchmark_year_metrics = pd.DataFrame(year_metric_rows).round(3)
@@ -1154,8 +1175,9 @@ predicted_color = "#0f766e"
 for ax, year in zip(axes, [2021, 2022, 2023]):
     year_df = (
         prediction_df[prediction_df["year"] == year]
-        .sort_values(target)
-        .reset_index(drop=True)
+        .set_index("metro_label")
+        .reindex(metro_order)
+        .reset_index()
     )
     y_positions = np.arange(len(year_df))
     ax.hlines(
@@ -1185,9 +1207,9 @@ for ax, year in zip(axes, [2021, 2022, 2023]):
         benchmark_year_metrics["Test year"] == year, "MAE"
     ].iloc[0]
     year_r2 = benchmark_year_metrics.loc[
-        benchmark_year_metrics["Test year"] == year, "R2"
+        benchmark_year_metrics["Test year"] == year, "Within-year R2"
     ].iloc[0]
-    ax.set_title(f"{year}\\nMAE = {year_mae:.2f} pp\\n$R^2$ = {year_r2:.2f}")
+    ax.set_title(f"{year}\\nMAE = {year_mae:.2f} pp\\nWithin-year $R^2$ = {year_r2:.2f}")
     ax.set_xlabel("Employment growth (%)")
     ax.set_yticks(y_positions)
     if year == 2021:
@@ -1196,7 +1218,10 @@ for ax, year in zip(axes, [2021, 2022, 2023]):
         ax.set_yticklabels([])
         ax.set_ylabel("")
 
-axes[0].legend(loc="lower right")
+handles, labels = axes[0].get_legend_handles_labels()
+if axes[0].legend_ is not None:
+    axes[0].legend_.remove()
+fig.legend(handles, labels, loc="lower center", bbox_to_anchor=(0.5, -0.02), ncol=2)
 fig.suptitle(
     f"Held-Out Test Performance by Year ({benchmark_model_name})\\n"
     f"Overall test $R^2$ = {benchmark_row['Test R2']:.3f}, "
@@ -1205,13 +1230,13 @@ fig.suptitle(
     fontweight="semibold",
     y=1.03,
 )
-plt.tight_layout()
+plt.tight_layout(rect=(0, 0.04, 1, 0.95))
 plt.savefig(FIGURES_DIR / "10_benchmark_yearwise_performance.png", dpi=220, bbox_inches="tight", facecolor="white")
 plt.show()
 
 display_table(
     benchmark_year_metrics,
-    caption="Year-by-year held-out performance for the highlighted benchmark",
+    caption="Year-by-year held-out performance for the selected baseline, including within-year R2",
     precision=3,
     left_align=["Test year"],
 )
@@ -1306,7 +1331,7 @@ display_table(
                 )
                 left_title = f"{benchmark_model_name}: Top Feature Importances"
                 left_xlabel = "Importance"
-                table_caption = "Top feature importances for the highlighted benchmark"
+                table_caption = "Top feature importances for the selected baseline"
             else:
                 raw_coef = np.ravel(benchmark_estimator.coef_)
                 importance_df = pd.DataFrame(
@@ -1318,7 +1343,7 @@ display_table(
                 )
                 left_title = f"{benchmark_model_name}: Largest Standardized Coefficients"
                 left_xlabel = "|Coefficient|"
-                table_caption = "Largest standardized coefficient magnitudes for the highlighted benchmark"
+                table_caption = "Largest standardized coefficient magnitudes for the selected baseline"
 
             importance_df = pd.DataFrame(
                 importance_df
@@ -1402,77 +1427,60 @@ display_table(
     ),
     md(
         """
-        ## 5. Initial Results and Alignment with Expectations
+        ## 5. Results and Interpretation
 
-        The critical review changes the story in an important way.
+        The results support five main conclusions.
 
-        **What improved**
+        - The naive persistence rule shows why **`2019` alone is not enough for model choice**:
+          it achieves a validation **MAE of about 0.272** but deteriorates to a test **MAE of about 3.645** on `2021-2023`.
+        - Within the linear diagnostics, adding lagged economic-growth terms helps:
+          test performance moves from roughly **R² = 0.098 / MAE = 2.167** for the core linear specification to **R² = 0.142 / MAE = 2.100** for the lagged-growth linear specification.
+        - In the final three-model comparison, **Ridge Regression on the pruned expanded lagged panel** achieves the strongest held-out test performance at roughly **R² = 0.233 / MAE = 1.843**.
+        - **Gradient Boosting** remains an important comparison model because it is the most stable nonlinear baseline across the rolling pre-period validation years.
+        - The year-by-year held-out figure shows that `2021` is the hardest year, while `2022` and especially `2023` are easier to track.
+        - The same figure also clarifies an important metric nuance:
+          the pooled test `R²` is positive because the model captures broad differences across the full held-out period, but within-year `R²` can still be negative because the cross-metro spread inside a single year is much tighter.
 
-        - The naive persistence check shows why **`2019` alone cannot determine model choice**:
-          it posts a validation **MAE of about 0.272** but then deteriorates to a test **MAE of about 3.645** on `2021-2023`.
-        - Adding lagged growth terms improves the linear baseline over the earlier formulation.
-          In the test set, the linear benchmark moves from roughly **R² = 0.098 / MAE = 2.167** to **R² = 0.142 / MAE = 2.100**.
-        - The broader error-analysis pass improves the current raw-pixel benchmark further:
-          the **Ridge Regression on the pruned expanded lagged panel** reaches roughly **R² = 0.233 / MAE = 1.843** on the held-out period.
-        - The stronger prediction graphic also makes the failure mode much clearer:
-          the model is not uniformly bad; rather, `2021` is the hardest year, while `2022` and especially `2023` are easier to track.
-        - The year-by-year table shows an important nuance:
-          the benchmark captures the broad recovery pattern across the held-out period better than it captures fine within-year metro differences.
+        These results line up with the project objective and the EDA in a coherent way:
 
-        **How the initial results line up with expectations**
+        - lagged economic dynamics carry substantial predictive signal for future employment growth;
+        - lagged satellite summaries add information, but they do not fully solve the forecasting problem on their own;
+        - the small panel is sensitive to multicollinearity, so regularization is useful;
+        - and a nonlinear tree model is still worth keeping as a standard 109B comparison.
 
-        These results are broadly consistent with the EDA and the project objective:
+        The model choice in this notebook is therefore straightforward:
 
-        - we expected **raw satellite summaries alone** to be limited, and the diagnostic confirms that they are not enough by themselves;
-        - we expected **past economic dynamics** to matter for forecasting future change, and adding lagged growth terms does help;
-        - we expected a nonlinear 109B model to be a useful comparison, and the boosted tree remains the most stable pre-period nonlinear baseline;
-        - we also expected the small tabular panel to be sensitive to multicollinearity, and the improved Ridge benchmark confirms that regularization helps once the lagged panel is broadened.
+        - **Selected baseline:** Ridge Regression on the pruned expanded lagged panel
+        - **Why selected:** best held-out test performance with an interpretable linear structure
+        - **Main nonlinear comparison:** Gradient Boosting Regressor
+        - **Simple reference model:** Linear Regression with metro fixed effects
 
-        The notebook therefore surfaces **two complementary answers** instead of forcing a false single-winner story:
-
-        - **Gradient Boosting** is the more stable pre-period baseline under rolling validation and `2019` validation;
-        - **Ridge Regression on the pruned expanded lagged panel** is the strongest current held-out raw-pixel regression benchmark.
-
-        That is a better match to the project objective than pretending that one small validation year can fully summarize a post-2020 forecasting problem.
-
-        **What the improvement means scientifically**
-
-        The stronger benchmark does **not** mean the proposal is already solved. In fact, the coefficient / importance breakdown still suggests that much of the predictive gain comes from **lagged economic context** plus selected satellite-change summaries, not from a rich built-up representation of urban form. That is a useful research finding:
-
-        - the problem has real autoregressive structure,
-        - richer lagged raw-pixel summaries help, but they still do not fully solve the metro-level forecasting problem,
-        - and the project still needs the richer **built-up footprint / urban-form features** from the later stages.
-
-        In other words, the improved baseline is valuable precisely because it is hard to beat honestly. Any later image-derived feature set should be evaluated against **this** stronger benchmark, not against the weaker earlier one.
+        The coefficient and importance plots also give a useful substantive interpretation. Much of the predictive signal comes from **lagged economic context** plus a smaller set of satellite-change summaries. That pattern is informative for the broader project because it suggests that richer built-up / urban-form features are still likely to matter in the next modeling stage.
         """
     ),
     md(
         """
-        ## 6. Conformance, Remaining Gaps, and Next Steps
+        ## 6. Scope, Limitations, and Next Steps
 
-        This revised notebook now conforms more closely to both the proposal and `MODELING_NEXT_STEPS.md`:
+        This notebook is intentionally scoped as a baseline study within the broader proposal.
+        It aligns with `MODELING_NEXT_STEPS.md` in the following ways:
 
         - it uses the project's **time-aware train / val / test split**
         - it predicts a **future economic change target**
         - it includes a simple **linear fixed-effects-style baseline**
-        - it adds a stronger but still interpretable **regularized linear benchmark**
+        - it includes an interpretable **regularized linear baseline**
         - it includes a Stat 109B nonlinear baseline
         - it evaluates with **R², RMSE, and MAE**
-        - it explicitly treats this as a **raw-pixel baseline before GHSL-derived spatial features**
+        - it treats the analysis as a **raw-satellite-summary baseline before GHSL-derived spatial features**
 
-        Just as importantly, it is also honest about what remains unresolved:
+        It also has clear limitations:
 
         - the proposal's main scientific claim is about **urban expansion / built-up growth**
         - the current panel still lacks those explicit spatial features
-        - so this notebook should be read as the **best current baseline**, not the final research result
+        - the notebook covers **one outcome** (`employment_thousands_growth`) rather than the full target set in the proposal
+        - the panel is small, so model rankings should be interpreted with appropriate caution
 
-        The most important remaining gaps are:
-
-        1. the notebook currently covers **one outcome** (`employment_thousands_growth`) rather than the full target set in the proposal;
-        2. the current predictors are still **raw satellite summaries**, not the more meaningful urban-form features promised in the proposal;
-        3. the panel is small, so apparent wins on a single year should always be interpreted cautiously.
-
-        The clean next step sequence is therefore:
+        The next modeling steps are therefore:
 
         | Next step | Why it matters | What success would look like |
         | --- | --- | --- |
@@ -1480,15 +1488,13 @@ display_table(
         | **Run the planned feature-set ablations** | This directly tests the Stage 3 plan in `MODELING_NEXT_STEPS.md`. | Compare raw-only vs spatial-only vs combined vs spatial-plus-economic-lags. |
         | **Replicate the same benchmark structure for GDP and permits** | This broadens the milestone from one outcome to the proposal's wider economic story. | The exact same train/val/test logic applied to additional targets. |
         | **Add sensitivity checks across metros or regions** | This tests whether performance is driven by a few cities. | Similar conclusions under leave-one-metro-out or expanded geography checks. |
-
-        That makes this notebook a strong milestone deliverable: it closes the **raw-pixel baseline** stage cleanly, and it also sets a clear bar for the next modeling stage to beat.
         """
     ),
     md(
         """
-        ## 7. Milestone Checklist
+        ## 7. Requirement Coverage
 
-        From an instructor's point of view, the required deliverable pieces are addressed explicitly:
+        The notebook covers the requested deliverable components as follows:
 
         | Requirement | Where it is addressed |
         | --- | --- |
@@ -1498,15 +1504,8 @@ display_table(
         | **Whether the entire dataset was considered** | Section 2, where the notebook explains that the whole available modeling panel is used except rows with undefined growth targets |
         | **Training process, preprocessing, and parameter choices** | Section 4, including feature families, imputation, scaling, sparsity control, and model settings |
         | **Evaluation metrics and why they are appropriate** | Section 4, with explicit rationale for `R²`, `RMSE`, and `MAE` |
-        | **Initial results with tables and plots** | Sections 3, 4, and 5, which include diagnostic tables, comparison tables, stability plots, and held-out visualizations |
+        | **Initial results with tables and plots** | Sections 3, 4, and 5, which include diagnostic tables, comparison tables, stability plots, held-out visualizations, and coefficient / importance summaries |
         | **Interpretation and connection to project objectives** | Sections 5 and 6, where the notebook explains what the current benchmark means and what remains unresolved |
-
-        The intended reading experience is therefore:
-
-        1. understand the project role of the notebook,
-        2. see exactly why the chosen baselines are reasonable,
-        3. inspect the evidence behind the improved benchmark,
-        4. and leave with a clear view of what the next milestone must beat.
         """
     ),
 ]
