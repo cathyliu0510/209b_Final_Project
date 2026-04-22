@@ -52,7 +52,13 @@ cells = [
         - **Ridge Regression on an expanded lagged panel**
         - **Gradient Boosting Regressor**
 
-        The selected baseline for reporting is **Ridge Regression on the expanded lagged panel** because it offers the best held-out performance while remaining interpretable and well suited to a small, collinear predictor set. **Gradient Boosting** is retained as the main nonlinear Stat 109B comparison model, and **Linear Regression** serves as the simplest transparent reference.
+        To make baseline selection more rigorous, the notebook uses **light time-aware hyperparameter tuning**:
+
+        - **Linear Regression** remains an untuned transparent reference;
+        - **Ridge Regression** is tuned over a compact `alpha` grid;
+        - **Gradient Boosting** is tuned over a small rolling-origin grid for tree depth, learning rate, ensemble size, and leaf size.
+
+        In the tuned comparison, **Ridge Regression on the expanded lagged panel** remains the selected reporting baseline because it achieves the lowest rolling-CV mean MAE under the pre-specified tuning criterion. **Gradient Boosting** remains the strongest nonlinear Stat 109B comparison and performs better on the official validation and test splits, so the notebook reports that contrast explicitly rather than hiding it.
 
         The notebook focuses on one target, **`employment_thousands_growth`**, so that the baseline can be presented cleanly from start to finish before the same framework is extended to additional outcomes.
 
@@ -86,11 +92,11 @@ cells = [
 
         The selected model is **Ridge Regression on the expanded lagged panel** because it balances:
 
-        - the strongest held-out test performance in this comparison;
+        - the lowest rolling-origin cross-validation mean MAE in the tuning stage;
         - a linear, still-interpretable structure;
-        - and better behavior under multicollinearity than an unregularized regression.
+        - and stronger regularization for a small, collinear lagged panel.
 
-        The main empirical takeaway is that lagged economic dynamics carry substantial predictive signal, while lagged raw satellite summaries add useful but still limited information. The notebook therefore establishes a clear raw-summary baseline for the project, while also showing that the later GHSL / built-up feature stage remains important.
+        The main empirical takeaway is that lagged economic dynamics carry substantial predictive signal, while lagged raw satellite summaries add useful but still limited information. The notebook therefore establishes a stronger and more defensible raw-summary baseline for the project, while also showing that the later GHSL / built-up feature stage remains important.
         """
     ),
     md(
@@ -253,17 +259,17 @@ cells = [
         | Model | Role in the notebook | Why it is included |
         | --- | --- | --- |
         | **Linear Regression with metro fixed effects** | Simple reference model | Closest to a classic panel-regression baseline. Metro dummies absorb level differences across cities. |
-        | **Ridge Regression on an expanded lagged panel** | Selected baseline | Retains a linear structure but is better suited to a small, highly collinear lagged feature set. |
-        | **Gradient Boosting Regressor** | Nonlinear Stat 109B comparison | Captures interactions and threshold effects while remaining standard and easy to justify as a baseline tree ensemble. |
+        | **Ridge Regression on an expanded lagged panel** | Selected reporting baseline | Retains a linear structure but is better suited to a small, highly collinear lagged feature set. |
+        | **Gradient Boosting Regressor** | Main nonlinear Stat 109B comparison | Captures interactions and threshold effects while remaining standard and easy to justify as a baseline tree ensemble. |
 
         We focus on **`employment_thousands_growth`** as the target because it best matches the proposal's "**future economic changes**" framing. Predicting growth is harder than predicting levels, but it is the more honest benchmark for this stage of the project.
 
         We also deliberately keep the milestone scoped to **one target** rather than trying to model GDP, employment, and permits all at once. That tradeoff keeps the notebook readable and lets us build one benchmark carefully before scaling the exact same evaluation structure to the other outcomes.
 
-        The selected model is **Ridge Regression on the expanded lagged panel**. It is selected because it combines:
+        The selected model is **Ridge Regression on an expanded lagged panel**. It is selected because it combines:
 
-        - the best held-out test metrics in the final comparison;
-        - a linear coefficient-based structure that remains interpretable;
+        - the strongest rolling-origin mean MAE during tuning;
+        - a stable linear structure that remains interpretable;
         - and regularization that is appropriate for correlated lagged predictors.
         """
     ),
@@ -767,17 +773,15 @@ cells = [
 
         This design keeps the comparison readable while still letting the selected model use a richer lagged panel. The raw-satellite feature space is small and highly collinear, so a regularized linear model is a natural choice for the broader specification.
 
-        **Evaluation protocol**
+        **Tuning protocol**
 
-        The project plan already specifies `2019` as the formal validation year, so we keep that split. But because a single validation year is fragile for such a small panel, we also add a **rolling-origin validation check**:
+        The project plan already specifies `2019` as the official validation year, so that split is retained for evaluation. Hyperparameter tuning, however, is performed with a separate **rolling-origin cross-validation procedure** inside the training period:
 
         - train on years before 2016, validate on 2016
         - train on years before 2017, validate on 2017
         - train on years before 2018, validate on 2018
 
-        That rolling check does not replace the official split. It is included to answer a practical model-selection question:
-
-        > **Which model looks most stable across several historical holdout years, not just one?**
+        Rolling-CV mean **MAE** is the main tuning criterion, and rolling-CV mean **R²** is reported alongside it. This keeps the tuning objective simple and aligned with the forecasting task while still showing whether a setting also improves explained variation.
 
         The persistence sanity check shows why this matters: a model can look good on `2019` and still generalize poorly to the true held-out period.
 
@@ -791,13 +795,19 @@ cells = [
 
         **Parameter choices and light tuning**
 
-        The point of this notebook is to build a credible benchmark, not to exhaustively optimize a small panel:
+        The point of this notebook is to build a credible benchmark, not to run a large optimization study, so the search is intentionally compact:
 
-        | Model | Key settings | Why these settings were used |
+        | Model | Search strategy | Candidate settings |
         | --- | --- | --- |
-        | **Linear Regression** | default linear model after scaling | maximally transparent fixed-effects-style reference |
-        | **Ridge Regression** | `alpha=1.0` | default-strength regularization for a wider, correlated lagged panel |
-        | **Gradient Boosting** | `n_estimators=150`, `learning_rate=0.05`, `max_depth=2` | shallow boosting setup that stays conservative on a small panel |
+        | **Linear Regression** | no tuning | default linear model after scaling |
+        | **Ridge Regression** | rolling-CV grid search | `alpha ∈ {0.01, 0.1, 1, 10, 100}` |
+        | **Gradient Boosting** | rolling-CV grid search | small grid over `n_estimators`, `learning_rate`, `max_depth`, and `min_samples_leaf` |
+
+        After tuning is complete, the chosen configuration for each model is refit on the full training set (`2014-2018` effective train years after lagging) and then evaluated on:
+
+        - the official **validation** split (`2019`);
+        - the held-out **test** split (`2021-2023`);
+        - with `2020` excluded throughout.
 
         **Evaluation metrics**
 
@@ -806,6 +816,11 @@ cells = [
         - **MAE**: easiest to interpret as average prediction error in percentage points
 
         Because the test period is heterogeneous, the notebook also reports **year-by-year diagnostics** for the selected model rather than relying on one pooled scatter alone.
+
+        **Separation of roles**
+
+        - **Rolling-origin CV** is used only for hyperparameter tuning and stability assessment.
+        - **Validation / test evaluation** is reported only after the tuned configuration for each model has been refit on the full training split.
         """
     ),
     code(
@@ -857,35 +872,6 @@ cells = [
             )
 
 
-        candidate_models = {
-            "Linear Regression (fixed effects)": {
-                "pipeline": make_linear_pipeline(enhanced_numeric_features),
-                "features": enhanced_numeric_features,
-                "feature_family": "Conservative enhanced lagged panel",
-                "role": "Transparent fixed-effects reference",
-            },
-            "Ridge Regression (expanded lagged panel)": {
-                "pipeline": make_ridge_pipeline(pruned_expanded_numeric_features, alpha=1.0),
-                "features": pruned_expanded_numeric_features,
-                "feature_family": "Pruned expanded lagged panel",
-                "role": "Selected baseline",
-            },
-            "Gradient Boosting Regressor": {
-                "pipeline": make_tree_pipeline(
-                    enhanced_numeric_features,
-                    GradientBoostingRegressor(
-                        n_estimators=150,
-                        learning_rate=0.05,
-                        max_depth=2,
-                        random_state=42,
-                    ),
-                ),
-                "features": enhanced_numeric_features,
-                "feature_family": "Conservative enhanced lagged panel",
-                "role": "Nonlinear Stat 109B comparison",
-            },
-        }
-
         rolling_years = [2016, 2017, 2018]
         comparison_order = [
             "Linear Regression (fixed effects)",
@@ -893,18 +879,15 @@ cells = [
             "Gradient Boosting Regressor",
         ]
 
-        rows = []
-        rolling_detail_rows = []
-        fitted_models = {}
-        prediction_store = {}
-
-        for model_name, spec in candidate_models.items():
-            pipeline = spec["pipeline"]
-            numeric_features = spec["features"]
-            rolling_scores = []
+        def rolling_origin_cv(pipeline, numeric_features):
+            rows = []
             for holdout_year in rolling_years:
-                rolling_train = panel_df[(panel_df["year"] < holdout_year) & (panel_df["split"] == "train")].copy()
-                rolling_valid = panel_df[(panel_df["year"] == holdout_year) & (panel_df["split"] == "train")].copy()
+                rolling_train = panel_df[
+                    (panel_df["year"] < holdout_year) & (panel_df["split"] == "train")
+                ].copy()
+                rolling_valid = panel_df[
+                    (panel_df["year"] == holdout_year) & (panel_df["split"] == "train")
+                ].copy()
 
                 pipeline.fit(
                     rolling_train[categorical_features + numeric_features],
@@ -913,25 +896,188 @@ cells = [
                 rolling_pred = pipeline.predict(
                     rolling_valid[categorical_features + numeric_features]
                 )
-                rolling_scores.append(
+                rows.append(
                     {
-                        "year": holdout_year,
-                        "r2": r2_score(rolling_valid[target], rolling_pred),
-                        "rmse": rmse(rolling_valid[target], rolling_pred),
-                        "mae": mean_absolute_error(rolling_valid[target], rolling_pred),
-                    }
-                )
-                rolling_detail_rows.append(
-                    {
-                        "Model": model_name,
                         "Holdout year": holdout_year,
                         "R2": r2_score(rolling_valid[target], rolling_pred),
                         "RMSE": rmse(rolling_valid[target], rolling_pred),
                         "MAE": mean_absolute_error(rolling_valid[target], rolling_pred),
                     }
                 )
+            return pd.DataFrame(rows)
 
-            rolling_df = pd.DataFrame(rolling_scores)
+
+        def format_params(params):
+            if not params:
+                return "default"
+            formatted = []
+            for key, value in params.items():
+                if isinstance(value, float):
+                    formatted.append(f"{key}={value:g}")
+                else:
+                    formatted.append(f"{key}={value}")
+            return ", ".join(formatted)
+
+
+        def select_best_setting(search_df):
+            return (
+                search_df.sort_values(
+                    ["Rolling CV Mean MAE", "Rolling CV Mean R2"],
+                    ascending=[True, False],
+                )
+                .reset_index(drop=True)
+                .iloc[0]
+            )
+
+
+        ridge_alpha_grid = [0.01, 0.1, 1, 10, 100]
+        gb_grid = [
+            {
+                "n_estimators": n_estimators,
+                "learning_rate": learning_rate,
+                "max_depth": max_depth,
+                "min_samples_leaf": min_samples_leaf,
+            }
+            for n_estimators in [100, 150, 250]
+            for learning_rate in [0.03, 0.05, 0.1]
+            for max_depth in [1, 2]
+            for min_samples_leaf in [1, 3]
+        ]
+
+        selected_specs = {}
+        rolling_detail_rows = []
+        fitted_models = {}
+        prediction_store = {}
+
+        linear_pipeline = make_linear_pipeline(enhanced_numeric_features)
+        linear_rolling = rolling_origin_cv(linear_pipeline, enhanced_numeric_features)
+        selected_specs["Linear Regression (fixed effects)"] = {
+            "pipeline": make_linear_pipeline(enhanced_numeric_features),
+            "features": enhanced_numeric_features,
+            "feature_family": "Compact lagged panel",
+            "selected_params": {},
+            "search_space": "No tuning (default specification)",
+            "rolling_df": linear_rolling,
+        }
+
+        ridge_search_rows = []
+        ridge_cv_store = {}
+        for alpha in ridge_alpha_grid:
+            rolling_df = rolling_origin_cv(
+                make_ridge_pipeline(pruned_expanded_numeric_features, alpha=alpha),
+                pruned_expanded_numeric_features,
+            )
+            ridge_cv_store[alpha] = rolling_df
+            ridge_search_rows.append(
+                {
+                    "alpha": alpha,
+                    "Rolling CV Mean MAE": rolling_df["MAE"].mean(),
+                    "Rolling CV Mean R2": rolling_df["R2"].mean(),
+                }
+            )
+        ridge_search_results = (
+            pd.DataFrame(ridge_search_rows)
+            .sort_values(["Rolling CV Mean MAE", "Rolling CV Mean R2"], ascending=[True, False])
+            .reset_index(drop=True)
+        )
+        ridge_best = select_best_setting(ridge_search_results)
+        ridge_best_alpha = float(ridge_best["alpha"])
+        selected_specs["Ridge Regression (expanded lagged panel)"] = {
+            "pipeline": make_ridge_pipeline(pruned_expanded_numeric_features, alpha=ridge_best_alpha),
+            "features": pruned_expanded_numeric_features,
+            "feature_family": "Pruned expanded lagged panel",
+            "selected_params": {"alpha": ridge_best_alpha},
+            "search_space": "alpha in {0.01, 0.1, 1, 10, 100}",
+            "rolling_df": ridge_cv_store[ridge_best_alpha],
+        }
+
+        gb_search_rows = []
+        gb_cv_store = {}
+        for params in gb_grid:
+            rolling_df = rolling_origin_cv(
+                make_tree_pipeline(
+                    enhanced_numeric_features,
+                    GradientBoostingRegressor(random_state=42, **params),
+                ),
+                enhanced_numeric_features,
+            )
+            params_key = tuple(sorted(params.items()))
+            gb_cv_store[params_key] = rolling_df
+            gb_search_rows.append(
+                {
+                    **params,
+                    "Rolling CV Mean MAE": rolling_df["MAE"].mean(),
+                    "Rolling CV Mean R2": rolling_df["R2"].mean(),
+                }
+            )
+        gb_search_results = (
+            pd.DataFrame(gb_search_rows)
+            .sort_values(["Rolling CV Mean MAE", "Rolling CV Mean R2"], ascending=[True, False])
+            .reset_index(drop=True)
+        )
+        gb_best = select_best_setting(gb_search_results)
+        gb_best_params = {
+            "n_estimators": int(gb_best["n_estimators"]),
+            "learning_rate": float(gb_best["learning_rate"]),
+            "max_depth": int(gb_best["max_depth"]),
+            "min_samples_leaf": int(gb_best["min_samples_leaf"]),
+        }
+        selected_specs["Gradient Boosting Regressor"] = {
+            "pipeline": make_tree_pipeline(
+                enhanced_numeric_features,
+                GradientBoostingRegressor(random_state=42, **gb_best_params),
+            ),
+            "features": enhanced_numeric_features,
+            "feature_family": "Compact lagged panel",
+            "selected_params": gb_best_params,
+            "search_space": "n_estimators in {100, 150, 250}; learning_rate in {0.03, 0.05, 0.1}; max_depth in {1, 2}; min_samples_leaf in {1, 3}",
+            "rolling_df": gb_cv_store[tuple(sorted(gb_best_params.items()))],
+        }
+
+        tuning_summary_rows = []
+        for model_name in comparison_order:
+            spec = selected_specs[model_name]
+            tuning_summary_rows.append(
+                {
+                    "Model": model_name,
+                    "Search space": spec["search_space"],
+                    "Selected hyperparameters": format_params(spec["selected_params"]),
+                    "Rolling CV Mean MAE": spec["rolling_df"]["MAE"].mean(),
+                    "Rolling CV Mean R2": spec["rolling_df"]["R2"].mean(),
+                }
+            )
+
+        tuning_summary = pd.DataFrame(tuning_summary_rows)
+
+        display_table(
+            tuning_summary.round(3),
+            caption="Rolling-origin CV summary used only for tuning and model stability",
+            precision=3,
+            left_align=["Model", "Search space", "Selected hyperparameters"],
+        )
+        display_table(
+            ridge_search_results.round(3),
+            caption="Ridge tuning results ranked by rolling-CV mean MAE",
+            precision=3,
+            left_align=["alpha"],
+            highlight_rows=[0],
+        )
+        display_table(
+            gb_search_results.head(8).round(3),
+            caption="Top Gradient Boosting settings ranked by rolling-CV mean MAE",
+            precision=3,
+            left_align=["n_estimators", "learning_rate", "max_depth", "min_samples_leaf"],
+            highlight_rows=[0],
+        )
+
+        rows = []
+        for model_name in comparison_order:
+            spec = selected_specs[model_name]
+            pipeline = spec["pipeline"]
+            numeric_features = spec["features"]
+            rolling_df = spec["rolling_df"].copy()
+            rolling_df["Model"] = model_name
+            rolling_detail_rows.extend(rolling_df.to_dict("records"))
 
             pipeline.fit(
                 train_df[categorical_features + numeric_features],
@@ -949,9 +1095,9 @@ cells = [
                 {
                     "Model": model_name,
                     "Feature family": spec["feature_family"],
-                    "Role": spec["role"],
-                    "Rolling CV Mean R2": rolling_df["r2"].mean(),
-                    "Rolling CV Mean MAE": rolling_df["mae"].mean(),
+                    "Selected hyperparameters": format_params(spec["selected_params"]),
+                    "Rolling CV Mean MAE": rolling_df["MAE"].mean(),
+                    "Rolling CV Mean R2": rolling_df["R2"].mean(),
                     "Validation R2": r2_score(val_df[target], val_pred),
                     "Validation MAE": mean_absolute_error(val_df[target], val_pred),
                     "Test R2": r2_score(test_df[target], test_pred),
@@ -964,33 +1110,56 @@ cells = [
         comparison_results["order"] = comparison_results["Model"].map(
             {model_name: idx for idx, model_name in enumerate(comparison_order)}
         )
-        comparison_results = comparison_results.sort_values("order").drop(columns="order").reset_index(drop=True)
-
-        benchmark_model_name = "Ridge Regression (expanded lagged panel)"
-        stability_model_name = "Gradient Boosting Regressor"
-
-        comparison_results_display = comparison_results.copy()
-        comparison_results_display.insert(
-            1,
-            "Highlight",
-            comparison_results_display["Model"].map(
-                lambda value: (
-                    "Current benchmark"
-                    if value == benchmark_model_name
-                    else "Most stable pre-period model"
-                    if value == stability_model_name
-                    else ""
-                )
-            ),
+        comparison_results = (
+            comparison_results.sort_values("order").drop(columns="order").reset_index(drop=True)
         )
+
+        benchmark_model_name = (
+            comparison_results.sort_values(
+                ["Rolling CV Mean MAE", "Validation MAE", "Rolling CV Mean R2"],
+                ascending=[True, True, False],
+            )
+            .iloc[0]["Model"]
+        )
+        ridge_reporting_note = (
+            "No. Gradient Boosting becomes the reporting baseline after tuning."
+            if benchmark_model_name != "Ridge Regression (expanded lagged panel)"
+            else "Yes. Ridge remains the reporting baseline after tuning."
+        )
+
+        comparison_results["Role"] = comparison_results["Model"].map(
+            lambda value: (
+                "Selected reporting baseline"
+                if value == benchmark_model_name
+                else "Best linear regularized comparison"
+                if value == "Ridge Regression (expanded lagged panel)"
+                else "Simple fixed-effects reference"
+                if value == "Linear Regression (fixed effects)"
+                else "Nonlinear Stat 109B comparison"
+            )
+        )
+
+        official_eval_display = comparison_results[
+            [
+                "Model",
+                "Role",
+                "Feature family",
+                "Selected hyperparameters",
+                "Validation R2",
+                "Validation MAE",
+                "Test R2",
+                "Test MAE",
+                "Test RMSE",
+            ]
+        ].copy()
         display_table(
-            comparison_results_display.round(3),
-            caption="Improved baseline comparison: conservative references plus the upgraded regularized benchmark",
+            official_eval_display.round(3),
+            caption="Official validation and held-out test evaluation after refitting the tuned configurations on the full training split",
             precision=3,
-            left_align=["Model", "Highlight", "Feature family", "Role"],
+            left_align=["Model", "Role", "Feature family", "Selected hyperparameters"],
             highlight_rows=[
-                comparison_results_display.index[
-                    comparison_results_display["Model"] == benchmark_model_name
+                official_eval_display.index[
+                    official_eval_display["Model"] == benchmark_model_name
                 ][0]
             ],
         )
@@ -999,22 +1168,29 @@ cells = [
             [
                 {
                     "Selected model": benchmark_model_name,
-                    "Test R2": comparison_results.loc[
-                        comparison_results["Model"] == benchmark_model_name, "Test R2"
+                    "Selection basis": "Lowest rolling-CV mean MAE, with official validation used as a secondary check",
+                    "Rolling CV Mean MAE": comparison_results.loc[
+                        comparison_results["Model"] == benchmark_model_name, "Rolling CV Mean MAE"
+                    ].iloc[0],
+                    "Validation MAE": comparison_results.loc[
+                        comparison_results["Model"] == benchmark_model_name, "Validation MAE"
                     ].iloc[0],
                     "Test MAE": comparison_results.loc[
                         comparison_results["Model"] == benchmark_model_name, "Test MAE"
                     ].iloc[0],
-                    "Why it is selected": "It produces the strongest held-out test performance while remaining interpretable and well matched to a collinear lagged panel.",
-                    "Complementary note": "Gradient Boosting remains the most stable nonlinear model across the rolling pre-period validation years.",
+                    "Does tuning change the selected baseline?": ridge_reporting_note,
                 }
             ]
         )
         display_table(
-            benchmark_summary,
-            caption="How to read the final comparison table",
+            benchmark_summary.round(3),
+            caption="Selected reporting baseline after rolling-origin tuning",
             precision=3,
-            left_align=["Selected model", "Why it is selected", "Complementary note"],
+            left_align=[
+                "Selected model",
+                "Selection basis",
+                "Does tuning change the selected baseline?",
+            ],
         )
 
         rolling_results = pd.DataFrame(rolling_detail_rows)
@@ -1025,7 +1201,18 @@ cells = [
         )
         display_table(
             rolling_mae_table,
-            caption="Rolling-origin validation MAE by holdout year",
+            caption="Rolling-origin validation MAE by holdout year for the tuned configurations",
+            precision=3,
+            left_align=["Holdout year"],
+        )
+        rolling_r2_table = (
+            rolling_results.pivot(index="Holdout year", columns="Model", values="R2")
+            .reset_index()
+            .round(3)
+        )
+        display_table(
+            rolling_r2_table,
+            caption="Rolling-origin validation R2 by holdout year for the tuned configurations",
             precision=3,
             left_align=["Holdout year"],
         )
@@ -1046,7 +1233,7 @@ cells = [
             linewidth=2.2,
             markersize=9,
         )
-        ax.set_title("Rolling-Origin Validation Stability (MAE)")
+        ax.set_title("Rolling-Origin Validation MAE (Used Only for Tuning)")
         ax.set_xlabel("Validation year")
         ax.set_ylabel("MAE (percentage points)")
         ax.set_xticks(sorted(rolling_results["Holdout year"].unique()))
@@ -1092,9 +1279,10 @@ cells = [
         plot_order = comparison_results["Model"].tolist()
         plot_labels = {
             "Linear Regression (fixed effects)": "Linear FE",
-            "Ridge Regression (expanded lagged panel)": "Ridge (selected)",
+            "Ridge Regression (expanded lagged panel)": "Ridge",
             "Gradient Boosting Regressor": "Gradient Boosting",
         }
+        plot_labels[benchmark_model_name] = f"{plot_labels[benchmark_model_name]} (selected)"
         comparison_plot = comparison_results.copy()
         comparison_plot["Plot label"] = comparison_plot["Model"].map(plot_labels)
 
@@ -1110,7 +1298,7 @@ cells = [
             legend=False,
             ax=axes[0],
         )
-        axes[0].set_title("Test $R^2$ by Final Baseline Model")
+        axes[0].set_title("Held-Out Test $R^2$ After Tuning")
         axes[0].set_xlabel("$R^2$")
         axes[0].set_ylabel("")
         axes[0].set_xlim(0, comparison_results["Test R2"].max() + 0.08)
@@ -1126,7 +1314,7 @@ cells = [
             legend=False,
             ax=axes[1],
         )
-        axes[1].set_title("Test MAE by Final Baseline Model")
+        axes[1].set_title("Held-Out Test MAE After Tuning")
         axes[1].set_xlabel("MAE (percentage points)")
         axes[1].set_ylabel("")
         axes[1].set_xlim(0, comparison_results["Test MAE"].max() * 1.18)
@@ -1427,14 +1615,15 @@ display_table(
         """
         ## 5. Results and Interpretation
 
-        The results support five main conclusions.
+        The tuned results support six main conclusions.
 
         - The naive persistence rule shows why **`2019` alone is not enough for model choice**:
           it achieves a validation **MAE of about 0.272** but deteriorates to a test **MAE of about 3.645** on `2021-2023`.
         - Within the linear diagnostics, adding lagged economic-growth terms helps:
           test performance moves from roughly **R² = 0.098 / MAE = 2.167** for the core linear specification to **R² = 0.142 / MAE = 2.100** for the lagged-growth linear specification.
-        - In the final three-model comparison, **Ridge Regression on the pruned expanded lagged panel** achieves the strongest held-out test performance at roughly **R² = 0.233 / MAE = 1.843**.
-        - **Gradient Boosting** remains an important comparison model because it is the most stable nonlinear baseline across the rolling pre-period validation years.
+        - In the rolling-origin tuning stage, the best **Ridge** setting is a higher-regularization choice (`alpha = 100`), while the best **Gradient Boosting** setting is a shallow tree ensemble with `n_estimators = 100`, `learning_rate = 0.03`, `max_depth = 2`, and `min_samples_leaf = 1`.
+        - In the final tuned comparison, **Ridge Regression** achieves the lowest rolling-CV mean MAE (about **0.848**), while **Gradient Boosting** is a very close second (about **0.856**) and performs best on the official validation split with **MAE ≈ 0.617**.
+        - After refitting on the full training set, the tuned **Gradient Boosting Regressor** gives the strongest held-out test performance in this comparison at roughly **R² = 0.167 / MAE = 1.944**, ahead of tuned **Ridge** at about **R² = 0.115 / MAE = 2.007** and **Linear Regression** at about **R² = 0.142 / MAE = 2.100**.
         - The year-by-year held-out figure shows that `2021` is the hardest year, while `2022` and especially `2023` are easier to track.
         - The same figure also clarifies an important metric nuance:
           the pooled test `R²` is positive because the model captures broad differences across the full held-out period, but within-year `R²` can still be negative because the cross-metro spread inside a single year is much tighter.
@@ -1443,17 +1632,19 @@ display_table(
 
         - lagged economic dynamics carry substantial predictive signal for future employment growth;
         - lagged satellite summaries add information, but they do not fully solve the forecasting problem on their own;
-        - the small panel is sensitive to multicollinearity, so regularization is useful;
+        - the small panel is sensitive to multicollinearity, so regularization is useful for the linear benchmark;
         - and a nonlinear tree model is still worth keeping as a standard 109B comparison.
 
-        The model choice in this notebook is therefore straightforward:
+        The model choice in this notebook is therefore explicit but nuanced:
 
-        - **Selected baseline:** Ridge Regression on the pruned expanded lagged panel
-        - **Why selected:** best held-out test performance with an interpretable linear structure
-        - **Main nonlinear comparison:** Gradient Boosting Regressor
+        - **Selected reporting baseline:** Ridge Regression on the pruned expanded lagged panel
+        - **Why selected:** lowest rolling-CV mean MAE under the pre-specified tuning criterion
+        - **Strongest nonlinear comparison:** Gradient Boosting Regressor
         - **Simple reference model:** Linear Regression with metro fixed effects
 
-        The coefficient and importance plots also give a useful substantive interpretation. Much of the predictive signal comes from **lagged economic context** plus a smaller set of satellite-change summaries. That pattern is informative for the broader project because it suggests that richer built-up / urban-form features are still likely to matter in the next modeling stage.
+        Tuning therefore **does not change the selected baseline model** under the stated selection rule. Ridge remains the reporting baseline because rolling-CV mean MAE is treated as the primary criterion. At the same time, the notebook makes clear that tuned Gradient Boosting is the strongest official validation/test performer, so the model ranking is not one-dimensional on this small panel.
+
+        The coefficient and importance plots also give a useful substantive interpretation. Much of the predictive signal still comes from **lagged economic context** plus a smaller set of satellite-change summaries. That pattern is informative for the broader project because it suggests that richer built-up / urban-form features are still likely to matter in the next modeling stage.
         """
     ),
     md(
