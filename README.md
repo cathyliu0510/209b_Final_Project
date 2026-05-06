@@ -7,7 +7,7 @@ This repository studies whether **satellite-observed urban change** can help pre
 This PR refreshes the repository-level artifacts without overwriting parts of the project that were already working well.
 
 - the 14-metro data inventory, imagery, tensors, EDA notebooks, and baseline notebook now point to the same source of truth
-- the MODIS refresh now uses the audited per-metro-year acquisition manifest instead of a fixed `08-01` default
+- MODIS imagery is now collected from NASA GIBS using an audited metro-year acquisition manifest: for each metro and year, we search candidate dates, score cloud / gap quality, select the best available date, and then download the final mosaic from that selected date instead of using a fixed `08-01` rule
 - the updated GHSL visuals are now part of the repository handoff and can be found in both [`figures/`](figures/) and [`EDA_Figures/`](EDA_Figures/)
 
 ## 1. Project Snapshot
