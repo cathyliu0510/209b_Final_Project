@@ -1,0 +1,15 @@
+metro,modis_year_count,viirs_year_count,missing_modis_years,missing_viirs_years,modis_dimensions,viirs_dimensions,strict_mean_cloud_pct,strict_max_cloud_pct,diffuse_mean_cloud_pct,diffuse_max_cloud_pct,years_ge_20_diffuse,years_ge_40_diffuse,severe_cloud_years,max_dark_border_pct,modis_tile_grid,expected_bbox_aspect,observed_image_aspect,aspect_error_pct,geometry_check
+atlanta,11,7,none,none,1024x1024,1024x1024,0.06,0.14,6.25,12.47,0,0,none,36.29,2x2 tiles,1.004,1.000,0.42,stable full-tile mosaic
+austin,11,7,none,none,512x512,512x512,0.06,0.32,5.76,27.45,2,0,none,52.29,1x1 tiles,0.911,1.000,9.83,stable full-tile mosaic
+charlotte,11,7,none,none,512x512,512x512,0.03,0.11,7.45,15.98,0,0,none,56.48,1x1 tiles,0.987,1.000,1.33,stable full-tile mosaic
+dallas,11,7,none,none,512x512,512x512,0.16,0.81,15.89,47.16,4,1,2022,42.26,1x1 tiles,1.121,1.000,10.79,stable full-tile mosaic
+denver,11,7,none,none,512x512,512x512,2.54,15.54,17.67,57.37,2,2,"2014, 2018",50.48,1x1 tiles,1.084,1.000,7.75,stable full-tile mosaic
+houston,11,7,none,none,512x512,512x512,0.02,0.07,7.91,36.22,2,0,none,52.12,1x1 tiles,1.310,1.000,23.69,stable full-tile mosaic
+jacksonville,11,7,none,none,1024x512,512x512,0.10,0.26,10.08,16.91,0,0,none,35.18,2x1 tiles,1.007,2.000,98.55,stable full-tile mosaic
+las_vegas,11,7,none,none,1024x512,512x512,3.98,10.05,55.43,80.07,11,10,"2013, 2014, 2015, 2016, 2018, 2019, 2020, 2021, 2022, 2023",36.60,2x1 tiles,1.138,2.000,75.79,stable full-tile mosaic
+nashville,11,7,none,none,512x512,512x512,0.07,0.30,6.30,24.99,1,0,none,53.24,1x1 tiles,1.105,1.000,9.48,stable full-tile mosaic
+orlando,11,7,none,none,512x512,512x512,0.09,0.32,9.04,18.37,0,0,none,51.19,1x1 tiles,1.238,1.000,19.25,stable full-tile mosaic
+phoenix,11,7,none,none,512x1024,512x1024,2.94,9.04,54.66,83.91,9,9,"2013, 2015, 2016, 2017, 2018, 2019, 2021, 2022, 2023",39.27,1x2 tiles,1.061,0.500,52.86,stable full-tile mosaic
+raleigh,11,7,none,none,1024x512,1024x512,0.06,0.39,12.81,31.91,2,0,none,37.77,2x1 tiles,0.980,2.000,104.18,stable full-tile mosaic
+san_antonio,11,7,none,none,1024x512,512x512,0.03,0.16,4.28,17.94,0,0,none,34.86,2x1 tiles,1.315,2.000,52.09,stable full-tile mosaic
+tampa,11,7,none,none,512x512,512x512,0.09,0.31,11.73,30.42,1,0,none,39.95,1x1 tiles,0.889,1.000,12.50,stable full-tile mosaic
