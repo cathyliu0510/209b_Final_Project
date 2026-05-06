@@ -58,7 +58,7 @@ cells = [
         - **Ridge Regression** is tuned over a compact `alpha` grid;
         - **Gradient Boosting** is tuned over a small rolling-origin grid for tree depth, learning rate, ensemble size, and leaf size.
 
-        In the tuned comparison, **Ridge Regression on the expanded lagged panel** remains the selected reporting baseline because it achieves the lowest rolling-CV mean MAE under the pre-specified tuning criterion. **Gradient Boosting** remains the strongest nonlinear Stat 109B comparison and performs better on the official validation and test splits, so the notebook reports that contrast explicitly rather than hiding it.
+        The tuned comparison applies a pre-specified **rolling-CV mean MAE** rule to choose the reporting baseline and then contrasts that choice with the strongest official validation / test performer. The notebook reports both outcomes explicitly rather than pretending the ranking is one-dimensional.
 
         The notebook focuses on one target, **`employment_thousands_growth`**, so that the baseline can be presented cleanly from start to finish before the same framework is extended to additional outcomes.
 
@@ -79,7 +79,7 @@ cells = [
            preprocessing, feature families, parameter choices, rolling validation, and evaluation metrics.
         5. **[Results and Interpretation](#5.-Results-and-Interpretation)**:
            what the baseline results mean scientifically and how they connect back to the proposal.
-        6. **[Next Steps](#6.-Next-Steps)**:
+        6. **[Final-Project Extensions](#6.-Final-Project-Extensions)**:
            the immediate modeling steps that follow this baseline stage.
         """
     ),
@@ -90,11 +90,7 @@ cells = [
         Three baseline models are compared in this notebook:
         **Linear Regression with metro fixed effects**, **Ridge Regression on an expanded lagged panel**, and **Gradient Boosting Regressor**.
 
-        The selected model is **Ridge Regression on the expanded lagged panel** because it balances:
-
-        - the lowest rolling-origin cross-validation mean MAE in the tuning stage;
-        - a linear, still-interpretable structure;
-        - and stronger regularization for a small, collinear lagged panel.
+        The selected reporting baseline is the model that achieves the **lowest rolling-origin cross-validation mean MAE** under the notebook's pre-specified tuning rule. That choice is then contrasted with the strongest official validation / held-out test performer so the conclusions stay honest about model ranking on this small panel.
 
         The main empirical takeaway is that lagged economic dynamics carry substantial predictive signal, while lagged raw satellite summaries add useful but still limited information. The notebook therefore establishes a stronger and more defensible raw-summary baseline for the project, while also showing that the later GHSL / built-up feature stage remains important.
         """
@@ -1803,16 +1799,16 @@ display_table(
         ### 5.1 What the Tuning Stage Shows
 
         - The naive persistence rule shows why **`2019` alone is not enough for model choice**:
-          it achieves a validation **MAE of about 0.272** but deteriorates to a test **MAE of about 3.645** on `2021-2023`.
+          a single calm year can look deceptively strong on validation but fail to generalize across the more volatile held-out period.
         - Within the linear diagnostics, adding lagged economic-growth terms helps:
-          test performance moves from roughly **R² = 0.098 / MAE = 2.167** for the core linear specification to **R² = 0.142 / MAE = 2.100** for the lagged-growth linear specification.
-        - In the rolling-origin tuning stage, the best **Ridge** setting is a higher-regularization choice (`alpha = 100`), while the best **Gradient Boosting** setting is a shallow tree ensemble with `n_estimators = 100`, `learning_rate = 0.03`, `max_depth = 2`, and `min_samples_leaf = 1`.
-        - Under the pre-specified primary criterion, **rolling-CV mean MAE**, tuned **Ridge Regression** is selected because it achieves the lowest average fold error (about **0.848**), narrowly ahead of tuned **Gradient Boosting** (about **0.856**).
+          the expanded lagged panel is a more defensible linear baseline than the leaner fixed-effects-only specification.
+        - In the rolling-origin tuning stage, the best **Ridge** setting remains a higher-regularization choice, while the best **Gradient Boosting** setting remains a shallow ensemble rather than a very deep tree model.
+        - Under the pre-specified primary criterion, **rolling-CV mean MAE**, tuned **Ridge Regression** remains the selected reporting baseline.
 
         ### 5.2 What the Official Validation and Test Evaluation Shows
 
-        - After refitting the tuned configurations on the full training set, **Gradient Boosting** performs best on the official validation split with **MAE ≈ 0.617**.
-        - On the held-out `2021-2023` test period, **Gradient Boosting** also gives the strongest pooled performance in this comparison at roughly **R² = 0.167 / MAE = 1.944**, ahead of tuned **Linear Regression** at **R² = 0.142 / MAE = 2.100** and tuned **Ridge** at **R² = 0.115 / MAE = 2.007**.
+        - After refitting the tuned configurations on the full training set, **Gradient Boosting** remains the strongest model on the official validation split.
+        - On the held-out `2021-2023` test period, **Gradient Boosting** also remains the strongest pooled performer in this compact comparison, while **Ridge** remains the selected reporting baseline under the rolling-CV rule.
         - The year-by-year held-out figure shows that `2021` is the hardest year, while `2022` and especially `2023` are easier to track.
         - That same figure clarifies an important metric nuance:
           the pooled test `R²` is positive because the models capture broader differences across the full held-out period, but within-year `R²` can still be negative because the cross-metro spread inside a single year is much tighter.
@@ -1840,9 +1836,9 @@ display_table(
     ),
     md(
         """
-        ## 6. Next Steps
+        ## 6. Final-Project Extensions
 
-        | Next step | Why it matters | What success would look like |
+        | Extension | Why it matters | What success would look like |
         | --- | --- | --- |
         | **Generate GHSL / built-up features** | This is the missing scientific core of the proposal. | A metro-year panel with built-up area, compactness, infill/sprawl, and change metrics. |
         | **Run the planned feature-set ablations** | This directly tests the Stage 3 plan in `MODELING_NEXT_STEPS.md`. | Compare raw-only vs spatial-only vs combined vs spatial-plus-economic-lags. |

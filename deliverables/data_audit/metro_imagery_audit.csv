@@ -1,0 +1,15 @@
+metro,modis_year_count,viirs_year_count,missing_modis_years,missing_viirs_years,modis_dimensions,viirs_dimensions,strict_mean_cloud_pct,strict_max_cloud_pct,diffuse_mean_cloud_pct,diffuse_max_cloud_pct,core_diffuse_mean_cloud_pct,core_diffuse_max_cloud_pct,years_ge_20_diffuse,years_ge_40_diffuse,years_ge_12_core_diffuse,severe_cloud_years,max_dark_border_pct,max_core_dark_pct,modis_tile_grid,expected_bbox_aspect,observed_image_aspect,aspect_error_pct,geometry_check
+atlanta,11,7,none,none,1024x1024,1024x1024,0.18,1.23,3.54,11.49,1.00,3.32,0,0,0,none,0.00,0.00,2x2 tiles,1.004,1.000,0.42,stable full-tile mosaic
+austin,11,7,none,none,512x512,512x512,0.01,0.05,0.53,4.07,0.01,0.07,0,0,0,none,0.00,0.00,1x1 tiles,0.911,1.000,9.83,stable full-tile mosaic
+charlotte,11,7,none,none,512x512,512x512,0.01,0.06,1.70,2.87,0.55,1.01,0,0,0,none,1.65,0.00,1x1 tiles,0.987,1.000,1.33,stable full-tile mosaic
+dallas,11,7,none,none,512x512,512x512,0.04,0.31,3.34,9.27,1.54,4.29,0,0,0,none,4.50,0.00,1x1 tiles,1.121,1.000,10.79,stable full-tile mosaic
+denver,11,7,none,none,512x512,512x512,0.05,0.22,2.71,5.66,0.97,1.78,0,0,0,none,0.16,0.27,1x1 tiles,1.084,1.000,7.75,stable full-tile mosaic
+houston,11,7,none,none,512x512,512x512,0.01,0.05,0.97,5.41,0.05,0.53,0,0,0,none,0.00,0.01,1x1 tiles,1.310,1.000,23.69,stable full-tile mosaic
+jacksonville,11,7,none,none,1024x512,512x512,0.11,0.23,3.48,5.97,1.61,3.01,0,0,0,none,1.89,0.00,2x1 tiles,1.007,2.000,98.55,stable full-tile mosaic
+las_vegas,11,7,none,none,1024x512,512x512,1.73,6.73,19.87,26.87,15.10,28.45,7,0,6,2015,2.30,0.01,2x1 tiles,1.138,2.000,75.79,stable full-tile mosaic
+nashville,11,7,none,none,512x512,512x512,0.05,0.29,2.09,5.97,0.60,1.38,0,0,0,none,3.96,0.00,1x1 tiles,1.105,1.000,9.48,stable full-tile mosaic
+orlando,11,7,none,none,512x512,512x512,0.03,0.18,1.73,3.85,0.80,1.58,0,0,0,none,3.89,0.00,1x1 tiles,1.238,1.000,19.25,stable full-tile mosaic
+phoenix,11,7,none,none,512x1024,512x1024,0.17,1.06,6.71,14.74,4.74,11.59,0,0,0,none,0.01,0.00,1x2 tiles,1.061,0.500,52.86,stable full-tile mosaic
+raleigh,11,7,none,none,1024x512,1024x512,0.14,1.01,3.53,9.59,1.83,6.44,0,0,0,none,1.61,0.00,2x1 tiles,0.980,2.000,104.18,stable full-tile mosaic
+san_antonio,11,7,none,none,1024x512,512x512,0.02,0.13,1.73,11.03,0.30,2.62,0,0,0,none,3.40,0.00,2x1 tiles,1.315,2.000,52.09,stable full-tile mosaic
+tampa,11,7,none,none,512x512,512x512,0.03,0.09,2.01,4.07,0.99,2.19,0,0,0,none,3.72,0.00,1x1 tiles,0.889,1.000,12.50,stable full-tile mosaic

@@ -1,0 +1,8 @@
+metro,year,selected_date,selected_quality_flag,selected_missing_tiles,selected_core_diffuse_cloud_pct,selected_diffuse_cloud_pct,selected_core_dark_or_empty_pct,selected_dark_or_empty_pct,reason
+las_vegas,2013,2013-04-26,cloudy_but_complete,0,19.97,23.66,0.01,0.00,high_diffuse_cloud+high_core_diffuse_cloud
+las_vegas,2014,2014-05-24,cloudy_but_complete,0,14.92,20.79,0.00,0.00,high_diffuse_cloud+high_core_diffuse_cloud
+las_vegas,2015,2015-11-19,cloudy_but_complete,0,28.45,23.62,0.00,0.00,high_diffuse_cloud+high_core_diffuse_cloud
+las_vegas,2018,2018-02-12,cloudy_but_complete,0,16.86,25.59,0.00,0.00,high_diffuse_cloud+high_core_diffuse_cloud
+las_vegas,2019,2019-08-30,cloudy_but_complete,0,18.71,25.81,0.00,2.30,high_diffuse_cloud+high_core_diffuse_cloud
+las_vegas,2020,2020-04-26,cloudy_but_complete,0,10.71,23.43,0.00,1.94,high_diffuse_cloud
+las_vegas,2021,2021-08-20,cloudy_but_complete,0,16.64,26.87,0.01,0.00,high_diffuse_cloud+high_core_diffuse_cloud
