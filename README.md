@@ -2,6 +2,14 @@
 
 This repository studies whether **satellite-observed urban change** can help predict **future metro-level economic activity** across a 14-metro U.S. panel. The current repository state has been refreshed so that the data inventory, EDA notebooks, preprocessing notebooks, and baseline-model notebook all point to the same restored 14-metro source of truth.
 
+## Updated in This PR
+
+This PR refreshes the repository-level artifacts without overwriting parts of the project that were already working well.
+
+- the 14-metro data inventory, imagery, tensors, EDA notebooks, and baseline notebook now point to the same source of truth
+- the MODIS refresh now uses the audited per-metro-year acquisition manifest instead of a fixed `08-01` default
+- the updated GHSL visuals are now part of the repository handoff and can be found in both [`figures/`](figures/) and [`EDA_Figures/`](EDA_Figures/)
+
 ## 1. Project Snapshot
 
 | Item | Current status |
@@ -76,9 +84,9 @@ Rationale:
 
 ### 4.3 Audit visuals
 
-![MODIS metro-level center-weighted cloud summary](/Users/hanzhenzhu/Desktop/focused-cray-restore/deliverables/data_audit/modis_cloud_summary.png)
+![MODIS metro-level center-weighted cloud summary](deliverables/data_audit/modis_cloud_summary.png)
 
-![Residual MODIS QA contact sheet](/Users/hanzhenzhu/Desktop/focused-cray-restore/deliverables/data_audit/modis_residual_qa.png)
+![Residual MODIS QA contact sheet](deliverables/data_audit/modis_residual_qa.png)
 
 How to read these:
 - the first figure summarizes **center-weighted** cloud risk by metro after the refresh
@@ -99,6 +107,26 @@ How to read these:
 | [`deliverables/data_audit/modis_refresh_log.csv`](deliverables/data_audit/modis_refresh_log.csv) | Refresh log for all rewritten MODIS frames |
 | [`data/imagery/modis_acquisition_manifest.csv`](data/imagery/modis_acquisition_manifest.csv) | The current source-of-truth MODIS acquisition manifest used by the notebooks |
 
+### 4.5 Updated GHSL visuals
+
+These figures summarize the repaired GHSL portion of the EDA and are the recommended visuals to inspect first when reviewing the urban-expansion signal.
+
+**GHSL built-up expansion over time**
+
+![GHSL built-up expansion over time](figures/15_ghsl_expansion_timeseries.png)
+
+**MODIS brightness vs. GHSL built-up area**
+
+![MODIS brightness vs GHSL built-up area](figures/16_modis_vs_ghsl.png)
+
+**GHSL built-up change vs. GDP growth**
+
+![GHSL built-up change vs GDP growth](figures/17_ghsl_vs_gdp_growth.png)
+
+**GHSL masks across all metros and labeled epochs**
+
+![GHSL masks across all metros and labeled epochs](figures/18_ghsl_masks_all_metros.png)
+
 ## 5. Baseline Modeling Notebook
 
 The baseline-model notebook is:
@@ -118,11 +146,11 @@ The notebook now reflects the refreshed pre-final data state and keeps the MS3 l
 
 ### 5.1 Modeling visuals
 
-![Rolling-origin validation stability](/Users/hanzhenzhu/Desktop/focused-cray-restore/figures/08_rolling_validation_stability.png)
+![Rolling-origin validation stability](figures/08_rolling_validation_stability.png)
 
-![Official tuned baseline comparison](/Users/hanzhenzhu/Desktop/focused-cray-restore/figures/07_baseline_model_comparison.png)
+![Official tuned baseline comparison](figures/07_baseline_model_comparison.png)
 
-![Selected baseline year-wise performance](/Users/hanzhenzhu/Desktop/focused-cray-restore/figures/10_benchmark_yearwise_performance.png)
+![Selected baseline year-wise performance](figures/10_benchmark_yearwise_performance.png)
 
 These visuals are the clearest way to read the notebook:
 - the rolling-validation figure explains why the selected reporting baseline is chosen
