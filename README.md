@@ -1,12 +1,8 @@
 # Urban Expansion vs Economic Activity
 
-This repository studies whether **satellite-observed urban change** can help predict **future metro-level economic activity**. The current deliverables already cover the data pipeline, exploratory data analysis, and a compact but time-aware baseline-model notebook.
+This repository studies whether **satellite-observed urban change** can help predict **future metro-level economic activity** across a 14-metro U.S. panel. The current repository state has been refreshed so that the data inventory, EDA notebooks, preprocessing notebooks, and baseline-model notebook all point to the same restored 14-metro source of truth.
 
-The baseline-model milestone deliverable is:
-
-- [`Jenny_baseline_model_selection_and_justification.ipynb`](Jenny_baseline_model_selection_and_justification.ipynb)
-
-## 1. Project At a Glance
+## 1. Project Snapshot
 
 | Item | Current status |
 | --- | --- |
@@ -15,224 +11,169 @@ The baseline-model milestone deliverable is:
 | **Panel span** | 2013-2023 |
 | **Satellite inputs** | MODIS RGB summaries and VIIRS night-light summaries |
 | **Economic inputs** | BEA GDP, BLS employment / unemployment, Census permits |
-| **Completed stages** | Data pipeline, unified panel construction, EDA, baseline modeling |
-| **Baseline target in the notebook** | `employment_thousands_growth` |
-| **Selected reporting baseline** | **Ridge Regression on the expanded lagged panel** |
-| **Strongest official holdout performer** | **Gradient Boosting Regressor** |
+| **Current baseline target** | `employment_thousands_growth` |
+| **Selected reporting baseline** | Ridge Regression on the expanded lagged panel |
+| **Strongest nonlinear comparator** | Gradient Boosting Regressor |
 | **Next scientific milestone** | Add GHSL / built-up spatial features and compare them against the raw-summary baseline |
 
 ## 2. Repository Guide
 
 | Artifact | What it contains | Why it matters |
 | --- | --- | --- |
-| [`00_Final_EDA_Merged_finalized.ipynb`](00_Final_EDA_Merged_finalized.ipynb) | Main exploratory analysis notebook | Establishes the empirical motivation for time-aware modeling |
+| [`00_Final_EDA_Merged.ipynb`](00_Final_EDA_Merged.ipynb) | Canonical refreshed EDA + panel construction notebook | Builds the modeling panel and updated visual exports |
+| [`00_Final_EDA_Merged_finalized.ipynb`](00_Final_EDA_Merged_finalized.ipynb) | Synced copy of the canonical EDA notebook | Keeps the finalized handoff notebook aligned with the current source of truth |
+| [`Cathy_Comprehensive_EDA.ipynb`](Cathy_Comprehensive_EDA.ipynb) | Synced copy of the canonical EDA notebook | Avoids drift across teammate-facing EDA notebooks |
 | [`Jenny_baseline_model_selection_and_justification.ipynb`](Jenny_baseline_model_selection_and_justification.ipynb) | Executed baseline-model milestone notebook | Runs model selection, tuning, evaluation, and interpretation |
-| [`scripts/build_baseline_model_notebook.py`](scripts/build_baseline_model_notebook.py) | Notebook generator | Rebuilds the notebook and exports the baseline figures |
+| [`01_gibs_tile_fetcher_v5.ipynb`](01_gibs_tile_fetcher_v5.ipynb) | Satellite acquisition notebook | Now documents the per-metro-year MODIS date manifest rather than a fixed `08-01` rule |
+| [`03_raster_preprocessing.ipynb`](03_raster_preprocessing.ipynb) | Raster preprocessing notebook | Now reflects the 14-metro scope and the `2020`-excluded evaluation split |
 | [`MODELING_NEXT_STEPS.md`](MODELING_NEXT_STEPS.md) | Modeling roadmap | Defines the GHSL / spatial-feature stage and planned ablations |
-| [`01_gibs_tile_fetcher_v5.ipynb`](01_gibs_tile_fetcher_v5.ipynb) | Satellite data acquisition | Downloads and mosaics NASA GIBS imagery |
-| [`02_economic_data_downloader_v6.ipynb`](02_economic_data_downloader_v6.ipynb) | Economic data construction | Builds the metro-year target panel |
-| [`03_raster_preprocessing.ipynb`](03_raster_preprocessing.ipynb) | Raster preprocessing pipeline | Produces cleaned, aligned satellite tensors |
-| [`figures/`](figures/) | Presentation-ready exported visuals | Stores EDA and baseline-model figures used across the project |
+| [`figures/`](figures/) | Presentation-ready exported visuals | Stores refreshed EDA and baseline figures used in slides and docs |
 
-## 3. Data Integrity and Imagery Audit
+## 3. Pre-Final Refresh Status
 
-The project notebooks describe a **14-metro** study, so the published data inventory has to match that scope before any modeling claims are trustworthy. I ran a dedicated audit to check the current branch state, the local restored inventory, and the quality of the MODIS frames that feed the EDA and downstream modeling.
+This repo now includes a full **pre-final-model refresh** of the MODIS imagery, tensors, modeling tables, EDA notebooks, and baseline notebook.
 
-### 3.1 Branch-level data status
+| Refresh check | Current status | Rationale |
+| --- | --- | --- |
+| **14-metro inventory restored locally** | Yes | The notebooks and proposal describe a 14-metro project, so the local working tree must match that scope |
+| **`upstream/main` still incomplete** | Yes | Published `main` still exposes only 5 metros, so local repair artifacts remain important |
+| **MODIS acquisition moved off fixed `08-01`** | Yes | The final MODIS dates are now stored explicitly in [`data/imagery/modis_acquisition_manifest.csv`](data/imagery/modis_acquisition_manifest.csv) |
+| **Broad-search + rescue workflow completed** | Yes | Every metro-year was searched on a broad spring-to-fall grid, and stubborn cases were re-searched on a year-round weekly grid |
+| **Full MODIS rewrite completed** | Yes | All 154 metro-year MODIS GeoTIFFs were regenerated from the selected-date manifest |
+| **Selected frames with missing tiles** | `0` | Selection now prioritizes full coverage first |
+| **Selected frames with large dark gaps (`>5%`)** | `0` | This removes the black-wedge / cut-in-half failure mode from the chosen frames |
+| **Residual high core-cloud cases (`>12%`)** | `6` | After the full rescue search, only a small Las Vegas-heavy subset remains above the center-visibility concern line |
+| **Residual whole-frame high-diffuse cases (`>25%`)** | `3` | The cloudiest remaining frames are now explicit, bounded, and documented rather than hidden in the default fetch rule |
+
+## 4. Data Integrity and Imagery Audit
+
+### 4.1 Branch-level data status
 
 | Ref / state | Panel metros | Imagery metros | Why it matters |
 | --- | ---: | ---: | --- |
-| **Current working tree** | 14 | 14 | This is the restored local data state used by the audit |
-| **`upstream/main`** | 5 | 5 | Incomplete for the stated project scope |
-| **`upstream/rename-add-prefix`** | 14 | 14 | Most complete published branch-level source of truth right now |
+| **Current working tree** | 14 | 14 | This is the refreshed local source of truth used by the current notebooks |
+| **`upstream/main`** | 5 | 5 | Incomplete relative to the stated project scope |
+| **`upstream/rename-add-prefix`** | 14 | 14 | Most complete published branch-level snapshot from the earlier recovery step |
 
 Rationale:
-- a 5-metro branch is not just a smaller sample; it is inconsistent with the 14-metro notebooks, figures, and proposal framing
-- teammates should not keep building models from `main` until the 14-metro state is restored there
-- the current local modeling tables (`data/modeling/panel_features.csv` and `data/modeling/panel_normalized.csv`) are also back to **14 metros**, so the restored local state is internally consistent for downstream modeling
+- a 5-metro branch is not a harmless subset; it is inconsistent with the notebooks, proposal framing, and exported figures
+- the local refreshed artifacts should be treated as the working source of truth until the repaired state is merged to the team-facing branch
 
-### 3.2 MODIS quality findings
+### 4.2 MODIS selection rule
 
-![MODIS diffuse-cloud audit](deliverables/data_audit/modis_cloud_summary.png)
+The MODIS refresh no longer treats `08-01` as the source of truth.
 
-Key findings from the audit:
-- `01_gibs_tile_fetcher_v5.ipynb` uses `08-01` as a **heuristic** default for lower cloud cover in CONUS, but that does not guarantee good imagery for every metro-year
-- the notebook's current cloud filter is very strict and only catches nearly pure-white clouds, so it likely **underestimates** gray or hazy cloud contamination
-- a broader diffuse-cloud proxy flags repeated high-risk years for metros such as **Phoenix** and **Las Vegas**, which means some current MODIS frames are weak evidence for visible urban expansion
-- the saved raster dimensions are stable and always multiples of `512`, which is consistent with full GIBS tile mosaics; a rectangular image is therefore **not automatically** evidence that a city was cut in half
-
-### 3.3 Candidate-date search for the worst metros
-
-I also ran a compact MODIS date search for the highest-risk metros (`Phoenix`, `Las Vegas`, `Denver`, `Dallas`) across `2013-2023`, comparing `07-01`, `07-15`, `08-01`, `08-15`, and `09-01`.
-
-What it showed:
-- in **34 of 44** searched metro-years, `08-01` was **not** the best date under the diffuse-cloud metric
-- large improvements exist for key problematic cases:
-  - `Phoenix 2018`: `08-01` diffuse cloud `83.91%` → best candidate `2018-09-01` at `15.93%`
-  - `Denver 2018`: `08-01` diffuse cloud `57.37%` → best candidate `2018-09-01` at `1.87%`
-  - `Las Vegas 2021`: `08-01` diffuse cloud `80.07%` → best candidate `2021-07-15` at `39.03%`
-  - `Dallas 2022`: `08-01` diffuse cloud `47.16%` → best candidate `2022-08-15` at `7.15%`
+The final selection rule is:
+1. Prefer frames with **no missing tiles** and **`dark_or_empty_pct <= 5`**
+2. Within those complete frames, minimize **center-region cloud risk**
+3. Use whole-frame cloud metrics only as tie-breakers
+4. For stubborn cases, run a **year-round weekly rescue search** instead of accepting the fixed seasonal heuristic
 
 Rationale:
-- this is the strongest current evidence that the fixed `08-01` rule should be replaced rather than merely caveated
-- the search results are concrete enough to prioritize re-download work instead of re-auditing all metros blindly
+- this directly addresses the failure mode shown in teammate screenshots, where a frame can look “cut in half” even if the WMTS request technically succeeds
+- a frame that preserves the city core and avoids black wedges is safer for downstream feature extraction than one that only looks cleaner in peripheral tiles
+- the rescue search is only used after the broad spring-to-fall pass fails, so most metro-years still come from a seasonally comparable search window
 
-### 3.4 Audit artifacts
+### 4.3 Audit visuals
+
+![MODIS metro-level center-weighted cloud summary](/Users/hanzhenzhu/Desktop/focused-cray-restore/deliverables/data_audit/modis_cloud_summary.png)
+
+![Residual MODIS QA contact sheet](/Users/hanzhenzhu/Desktop/focused-cray-restore/deliverables/data_audit/modis_residual_qa.png)
+
+How to read these:
+- the first figure summarizes **center-weighted** cloud risk by metro after the refresh
+- the second figure shows the highest-risk remaining frames after enforcing the no-gap rule and the rescue-search workflow
+- those residual cases are now **complete images**, so the remaining issue is cloudiness / bright-scene ambiguity rather than broken geometry
+
+### 4.4 Audit artifacts
 
 | Artifact | What it contains |
 | --- | --- |
-| [`deliverables/data_audit/DATA_INTEGRITY_AUDIT.md`](deliverables/data_audit/DATA_INTEGRITY_AUDIT.md) | Full written audit with rationale and recommendations |
+| [`deliverables/data_audit/DATA_INTEGRITY_AUDIT.md`](deliverables/data_audit/DATA_INTEGRITY_AUDIT.md) | Full written audit with the final rationale and interpretation notes |
 | [`deliverables/data_audit/branch_data_status.csv`](deliverables/data_audit/branch_data_status.csv) | Branch-by-branch metro coverage snapshot |
 | [`deliverables/data_audit/metro_imagery_audit.csv`](deliverables/data_audit/metro_imagery_audit.csv) | Metro-level inventory, geometry, and cloud summary |
-| [`deliverables/data_audit/modis_cloud_year_audit.csv`](deliverables/data_audit/modis_cloud_year_audit.csv) | Year-level MODIS cloud-risk log |
-| [`deliverables/data_audit/modis_date_search/modis_date_search_summary.md`](deliverables/data_audit/modis_date_search/modis_date_search_summary.md) | Best candidate date per high-risk metro-year |
+| [`deliverables/data_audit/modis_cloud_year_audit.csv`](deliverables/data_audit/modis_cloud_year_audit.csv) | Year-level MODIS cloud-risk log after the refresh |
 | [`deliverables/data_audit/modis_date_search/modis_date_candidates.csv`](deliverables/data_audit/modis_date_search/modis_date_candidates.csv) | Full candidate-date scoring table |
-| [`scripts/audit_data_integrity.py`](scripts/audit_data_integrity.py) | Reproducible audit script |
-| [`scripts/search_modis_candidate_dates.py`](scripts/search_modis_candidate_dates.py) | Candidate-date search tool for lower-cloud MODIS replacements |
+| [`deliverables/data_audit/modis_date_search/modis_date_search_summary.md`](deliverables/data_audit/modis_date_search/modis_date_search_summary.md) | Final selected date per metro-year after refinement |
+| [`deliverables/data_audit/modis_date_search/modis_refinement_targets.csv`](deliverables/data_audit/modis_date_search/modis_refinement_targets.csv) | Final metro-years that still exceed the cloud thresholds even after refinement |
+| [`deliverables/data_audit/modis_refresh_log.csv`](deliverables/data_audit/modis_refresh_log.csv) | Refresh log for all rewritten MODIS frames |
+| [`data/imagery/modis_acquisition_manifest.csv`](data/imagery/modis_acquisition_manifest.csv) | The current source-of-truth MODIS acquisition manifest used by the notebooks |
 
-## 4. Baseline Modeling Setup
+## 5. Baseline Modeling Notebook
 
-### 4.1 Effective sample and split
+The baseline-model notebook is:
 
-| Component | Value |
+- [`Jenny_baseline_model_selection_and_justification.ipynb`](Jenny_baseline_model_selection_and_justification.ipynb)
+
+The notebook now reflects the refreshed pre-final data state and keeps the MS3 logic intact:
+
+| Baseline component | Current notebook behavior |
 | --- | --- |
-| **Target** | `employment_thousands_growth` |
-| **Raw panel rows** | 140 metro-year observations |
-| **Rows used for modeling** | 126 observations with a defined growth target |
-| **Training years** | `2014-2018` |
-| **Validation year** | `2019` |
-| **Held-out test years** | `2021-2023` |
-| **Excluded year** | `2020`, treated as a COVID structural break |
-| **Leakage control** | All predictive features are lagged; all splits are time-based |
+| **Simple model** | Linear Regression with metro fixed effects |
+| **Regularized reporting baseline** | Ridge Regression on the expanded lagged panel |
+| **109B nonlinear comparator** | Gradient Boosting Regressor |
+| **Tuning workflow** | Rolling-origin CV inside the training period only |
+| **Official reporting split** | Train `2014-2018`, validation `2019`, test `2021-2023`, with `2020` excluded |
+| **Primary selection rule** | Lowest rolling-CV mean MAE |
 
-### 4.2 Baseline models in the notebook
+### 5.1 Modeling visuals
 
-| Model | Why it is included | Role |
-| --- | --- | --- |
-| **Linear Regression with metro fixed effects** | Simplest interpretable benchmark | Transparent reference model |
-| **Ridge Regression on an expanded lagged panel** | Keeps linear interpretability while handling a small, collinear feature space | **Selected reporting baseline** |
-| **Gradient Boosting Regressor** | Standard Stat 109B nonlinear comparison that can capture interactions and thresholds | Strong nonlinear comparator |
+![Rolling-origin validation stability](/Users/hanzhenzhu/Desktop/focused-cray-restore/figures/08_rolling_validation_stability.png)
 
-## 5. Time-Aware Cross-Validation Workflow
+![Official tuned baseline comparison](/Users/hanzhenzhu/Desktop/focused-cray-restore/figures/07_baseline_model_comparison.png)
 
-The baseline notebook separates **tuning** from **official evaluation**.
+![Selected baseline year-wise performance](/Users/hanzhenzhu/Desktop/focused-cray-restore/figures/10_benchmark_yearwise_performance.png)
 
-| Stage | Years used | Purpose |
-| --- | --- | --- |
-| **Rolling-origin CV fold 1** | train on years before `2016`, validate on `2016` | Hyperparameter tuning |
-| **Rolling-origin CV fold 2** | train on years before `2017`, validate on `2017` | Hyperparameter tuning |
-| **Rolling-origin CV fold 3** | train on years before `2018`, validate on `2018` | Hyperparameter tuning |
-| **Official validation** | `2019` | Model reporting only, not tuning |
-| **Held-out test** | `2021-2023` | Final evaluation only |
+These visuals are the clearest way to read the notebook:
+- the rolling-validation figure explains why the selected reporting baseline is chosen
+- the official comparison figure shows how the tuned models compare on the held-out split
+- the year-wise figure shows where the selected baseline is relatively easier or harder to trust
 
-The notebook uses **rolling-CV mean MAE** as the primary tuning criterion and reports rolling-CV mean `R^2` as secondary context.
+## 6. Current Source of Truth
 
-### 5.1 Split structure
+If you only open three files, open these:
 
-![Official split and rolling-origin CV protocol](figures/15_baseline_cv_protocol.png)
-
-This visual makes the evaluation design explicit:
-
-- the top row is the official train / validation / test split used for reporting;
-- the lower rows are the historical rolling-origin folds used only for tuning;
-- `2020` is excluded throughout.
-
-### 5.2 Compact tuning search
-
-![Compact hyperparameter tuning summary](figures/16_baseline_tuning_summary.png)
-
-The search is intentionally light:
-
-| Model | Search space |
+| Goal | File |
 | --- | --- |
-| **Linear Regression** | no tuning |
-| **Ridge Regression** | `alpha ∈ {0.01, 0.1, 1, 10, 100}` |
-| **Gradient Boosting** | small grid over `n_estimators`, `learning_rate`, `max_depth`, and `min_samples_leaf` |
+| **Understand the current data / EDA pipeline** | [`00_Final_EDA_Merged.ipynb`](00_Final_EDA_Merged.ipynb) |
+| **Understand the current baseline-model deliverable** | [`Jenny_baseline_model_selection_and_justification.ipynb`](Jenny_baseline_model_selection_and_justification.ipynb) |
+| **Understand the remaining modeling roadmap** | [`MODELING_NEXT_STEPS.md`](MODELING_NEXT_STEPS.md) |
 
-This keeps the notebook defensible as a **baseline study** rather than a large optimization exercise.
+## 7. Reproducibility
 
-## 6. Baseline Selection and Official Results
+### 7.1 Full pre-final refresh
 
-### 6.1 Selection rule
-
-| Decision question | Answer |
-| --- | --- |
-| **Primary selection rule** | Lowest rolling-origin CV mean MAE |
-| **Selected reporting baseline** | **Ridge Regression (expanded lagged panel)** with `alpha = 100` |
-| **Why Ridge is selected** | It has the best average rolling-CV MAE under the pre-specified rule |
-| **Strongest official validation / test performer** | **Gradient Boosting Regressor** with `100 trees`, `lr = 0.03`, `depth = 2`, `leaf = 1` |
-| **Interpretation** | The small panel does not yield a one-number ranking, so the notebook reports both the selection rule and the holdout winner clearly |
-
-### 6.2 Final model comparison
-
-| Model | Selected hyperparameters | Rolling CV Mean MAE | Rolling CV Mean R^2 | Validation MAE | Test MAE | Test R^2 | Role |
-| --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
-| **Linear Regression (fixed effects)** | default | 1.129 | -2.122 | 1.605 | 2.100 | 0.142 | Simple reference model |
-| **Ridge Regression (expanded lagged panel)** | `alpha = 100` | **0.848** | -0.706 | 0.744 | 2.007 | 0.115 | **Selected reporting baseline** |
-| **Gradient Boosting Regressor** | `100 trees`, `lr = 0.03`, `depth = 2`, `leaf = 1` | 0.856 | **-0.162** | **0.617** | **1.944** | **0.167** | Strongest nonlinear comparison |
-
-## 7. Essential Modeling Visuals
-
-### 7.1 Rolling-CV stability vs official holdout comparison
-
-<p align="center">
-  <img src="figures/08_rolling_validation_stability.png" alt="Rolling-origin validation stability" width="49%" />
-  <img src="figures/07_baseline_model_comparison.png" alt="Official validation and held-out test comparison" width="49%" />
-</p>
-
-Read these two figures together:
-
-- the left panel shows how each tuned model behaves across the historical rolling holdout years;
-- the right panel shows official validation and held-out test performance after refitting on the full training window.
-
-### 7.2 Selected baseline diagnostics
-
-<p align="center">
-  <img src="figures/10_benchmark_yearwise_performance.png" alt="Selected baseline performance by held-out year" width="49%" />
-  <img src="figures/09_baseline_feature_importance.png" alt="Selected baseline feature interpretation" width="49%" />
-</p>
-
-These figures answer two practical follow-up questions:
-
-- how the selected baseline behaves across `2021`, `2022`, and `2023`;
-- which lagged feature groups contribute most to its predictions.
-
-## 8. EDA Anchor
-
-![Cross-correlation heatmap](figures/06_cross_correlation_heatmap.png)
-
-The EDA already suggested that **within-metro temporal relationships are more useful than pooled cross-city relationships**. That is exactly why the baseline-model notebook uses lagged predictors, time-based splits, and rolling-origin validation instead of random cross-validation.
-
-## 9. Reading Order
-
-| If you want to understand... | Start here |
-| --- | --- |
-| **The exploratory evidence behind the project** | [`00_Final_EDA_Merged_finalized.ipynb`](00_Final_EDA_Merged_finalized.ipynb) |
-| **The baseline-model milestone deliverable** | [`Jenny_baseline_model_selection_and_justification.ipynb`](Jenny_baseline_model_selection_and_justification.ipynb) |
-| **What the next modeling stage should do** | [`MODELING_NEXT_STEPS.md`](MODELING_NEXT_STEPS.md) |
-
-## 10. Reproducibility
-
-To regenerate the notebook and the exported baseline figures:
+To rerun the entire pre-final refresh pipeline from the current repo state:
 
 ```bash
-python3 scripts/build_baseline_model_notebook.py
+./.venv/bin/python scripts/run_pre_final_refresh.py
 ```
 
-The generator writes directly to:
+That umbrella script:
+- searches candidate MODIS dates
+- expands the search for problematic metro-years
+- runs a year-round rescue search for the few metro-years that still exceed the cloud thresholds
+- refreshes all MODIS GeoTIFFs
+- reruns the imagery audit
+- reruns the preprocessing and EDA notebooks
+- regenerates the baseline-model notebook
 
-```text
-Jenny_baseline_model_selection_and_justification.ipynb
-```
-
-To rerun the data-integrity and MODIS-quality audit:
+### 7.2 Individual key commands
 
 ```bash
-python3 scripts/audit_data_integrity.py
+./.venv/bin/python scripts/search_modis_candidate_dates.py
+./.venv/bin/python scripts/refine_modis_candidate_dates.py
+./.venv/bin/python scripts/refresh_modis_from_selected_dates.py
+./.venv/bin/python scripts/audit_data_integrity.py
+./.venv/bin/python scripts/build_baseline_model_notebook.py
 ```
 
-To rerun the MODIS candidate-date search for the highest-risk metros:
+## 8. Interpretation Caveats
 
-```bash
-python3 scripts/search_modis_candidate_dates.py
-```
+The refresh resolved the major structural problems. The remaining caveats are now explicit rather than hidden:
+
+- `upstream/main` still does not reflect the repaired 14-metro state
+- a small Las Vegas-heavy subset of frames remains cloudier than the rest even after the full rescue search
+- bbox geometry is tile-stable, so the repo is internally consistent, but the imagery should still be interpreted as metro-aligned rasters rather than exact legal boundaries
+
+Those caveats are now documented, bounded, and reviewable rather than silent pipeline errors.

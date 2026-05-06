@@ -31,12 +31,17 @@ import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
 
+from search_modis_candidate_dates import score_rgb
+
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR = REPO_ROOT / "data"
 IMAGERY_DIR = DATA_DIR / "imagery"
 PANEL_PATH = DATA_DIR / "economic" / "panel.csv"
 OUT_DIR = REPO_ROOT / "deliverables" / "data_audit"
+MODIS_SELECTED_PATH = OUT_DIR / "modis_date_search" / "modis_selected_dates.csv"
+MODIS_REFRESH_LOG_PATH = OUT_DIR / "modis_refresh_log.csv"
+MODIS_RESIDUAL_QA_PATH = OUT_DIR / "modis_residual_qa.png"
 
 EXPECTED_MODIS_YEARS = list(range(2013, 2024))
 EXPECTED_VIIRS_YEARS = list(range(2017, 2024))
@@ -95,6 +100,13 @@ def read_panel_rows_from_text(text: str) -> list[dict[str, str]]:
 
 def read_local_panel_rows() -> list[dict[str, str]]:
     with PANEL_PATH.open(newline="") as fh:
+        return list(csv.DictReader(fh))
+
+
+def read_optional_csv_rows(path: Path) -> list[dict[str, str]]:
+    if not path.exists():
+        return []
+    with path.open(newline="") as fh:
         return list(csv.DictReader(fh))
 
 
@@ -168,38 +180,21 @@ def image_years(path: Path, allowed_years: set[int] | None = None) -> list[int]:
     return years
 
 
-def cloud_stats_for_rgb(path: Path) -> tuple[int, int, float, float, float, float]:
+def cloud_stats_for_rgb(path: Path) -> tuple[int, int, float, float, float, float, float, float]:
     img = Image.open(path).convert("RGB")
-    arr = np.asarray(img, dtype=np.float32) / 255.0
-    height, width = arr.shape[:2]
-
-    strict_white_cloud = np.all(arr > 0.95, axis=2)
-    strict_white_cloud_pct = float(strict_white_cloud.mean() * 100.0)
-
-    brightness = arr.mean(axis=2)
-    channel_spread = arr.max(axis=2) - arr.min(axis=2)
-    diffuse_cloud = (brightness > 0.65) & (channel_spread < 0.12)
-    diffuse_cloud_pct = float(diffuse_cloud.mean() * 100.0)
-
-    border = np.concatenate(
-        [
-            arr[:8, :, :].reshape(-1, 3),
-            arr[-8:, :, :].reshape(-1, 3),
-            arr[:, :8, :].reshape(-1, 3),
-            arr[:, -8:, :].reshape(-1, 3),
-        ],
-        axis=0,
-    )
-    dark_border_pct = float((np.max(border, axis=1) < 0.02).mean() * 100.0)
-    mean_brightness = float(arr.mean())
+    arr_uint8 = np.asarray(img, dtype=np.uint8)
+    height, width = arr_uint8.shape[:2]
+    scores = score_rgb(arr_uint8)
 
     return (
         width,
         height,
-        strict_white_cloud_pct,
-        diffuse_cloud_pct,
-        dark_border_pct,
-        mean_brightness,
+        scores["strict_white_cloud_pct"],
+        scores["diffuse_cloud_pct"],
+        scores["dark_or_empty_pct"],
+        scores["mean_brightness"],
+        scores["core_diffuse_cloud_pct"],
+        scores["core_dark_or_empty_pct"],
     )
 
 
@@ -231,6 +226,8 @@ def audit_local_imagery() -> tuple[list[dict[str, str]], list[dict[str, str]]]:
         strict_cloud_values: list[float] = []
         diffuse_cloud_values: list[float] = []
         dark_edge_values: list[float] = []
+        core_diffuse_values: list[float] = []
+        core_dark_values: list[float] = []
         severe_years: list[int] = []
 
         for year in modis_years:
@@ -242,12 +239,16 @@ def audit_local_imagery() -> tuple[list[dict[str, str]], list[dict[str, str]]]:
                 diffuse_cloud_pct,
                 dark_edge_pct,
                 mean_brightness,
+                core_diffuse_cloud_pct,
+                core_dark_or_empty_pct,
             ) = cloud_stats_for_rgb(path)
             modis_dims.add(f"{width}x{height}")
             strict_cloud_values.append(strict_cloud_pct)
             diffuse_cloud_values.append(diffuse_cloud_pct)
             dark_edge_values.append(dark_edge_pct)
-            if diffuse_cloud_pct >= 40.0:
+            core_diffuse_values.append(core_diffuse_cloud_pct)
+            core_dark_values.append(core_dark_or_empty_pct)
+            if core_diffuse_cloud_pct >= 20.0 or diffuse_cloud_pct >= 40.0:
                 severe_years.append(year)
             year_rows.append(
                 {
@@ -259,6 +260,8 @@ def audit_local_imagery() -> tuple[list[dict[str, str]], list[dict[str, str]]]:
                     "diffuse_cloud_pct": f"{diffuse_cloud_pct:.2f}",
                     "dark_border_pct": f"{dark_edge_pct:.2f}",
                     "mean_brightness": f"{mean_brightness:.4f}",
+                    "core_diffuse_cloud_pct": f"{core_diffuse_cloud_pct:.2f}",
+                    "core_dark_or_empty_pct": f"{core_dark_or_empty_pct:.2f}",
                 }
             )
 
@@ -298,10 +301,14 @@ def audit_local_imagery() -> tuple[list[dict[str, str]], list[dict[str, str]]]:
                 "strict_max_cloud_pct": f"{np.max(strict_cloud_values):.2f}" if strict_cloud_values else "nan",
                 "diffuse_mean_cloud_pct": f"{np.mean(diffuse_cloud_values):.2f}" if diffuse_cloud_values else "nan",
                 "diffuse_max_cloud_pct": f"{np.max(diffuse_cloud_values):.2f}" if diffuse_cloud_values else "nan",
+                "core_diffuse_mean_cloud_pct": f"{np.mean(core_diffuse_values):.2f}" if core_diffuse_values else "nan",
+                "core_diffuse_max_cloud_pct": f"{np.max(core_diffuse_values):.2f}" if core_diffuse_values else "nan",
                 "years_ge_20_diffuse": str(sum(value >= 20.0 for value in diffuse_cloud_values)),
                 "years_ge_40_diffuse": str(sum(value >= 40.0 for value in diffuse_cloud_values)),
+                "years_ge_12_core_diffuse": str(sum(value >= 12.0 for value in core_diffuse_values)),
                 "severe_cloud_years": ", ".join(map(str, severe_years)) or "none",
                 "max_dark_border_pct": f"{np.max(dark_edge_values):.2f}" if dark_edge_values else "nan",
+                "max_core_dark_pct": f"{np.max(core_dark_values):.2f}" if core_dark_values else "nan",
                 "modis_tile_grid": tile_grid,
                 "expected_bbox_aspect": f"{expected_aspect:.3f}" if expected_aspect else "nan",
                 "observed_image_aspect": f"{observed_aspect:.3f}" if observed_aspect else "nan",
@@ -334,12 +341,12 @@ def save_cloud_summary_plot(metro_rows: list[dict[str, str]]) -> Path:
     plot_path = OUT_DIR / "modis_cloud_summary.png"
     order = sorted(
         metro_rows,
-        key=lambda row: float(row["diffuse_mean_cloud_pct"]),
+        key=lambda row: float(row["core_diffuse_mean_cloud_pct"]),
         reverse=True,
     )
     metros = [row["metro"].replace("_", " ").title() for row in order]
-    mean_cloud = [float(row["diffuse_mean_cloud_pct"]) for row in order]
-    max_cloud = [float(row["diffuse_max_cloud_pct"]) for row in order]
+    mean_cloud = [float(row["core_diffuse_mean_cloud_pct"]) for row in order]
+    max_cloud = [float(row["core_diffuse_max_cloud_pct"]) for row in order]
 
     fig, ax = plt.subplots(figsize=(10.5, 6.5), constrained_layout=True)
     y = np.arange(len(metros))
@@ -348,9 +355,9 @@ def save_cloud_summary_plot(metro_rows: list[dict[str, str]]) -> Path:
     ax.set_yticks(y, metros, fontsize=9)
     ax.invert_yaxis()
     ax.set_xlabel("Cloud-mask share (%)")
-    ax.set_title("MODIS diffuse-cloud audit by metro (2013-2023)", fontsize=14, fontweight="bold")
-    ax.axvline(20, color="#f59e0b", linestyle="--", linewidth=1.2, label="20% concern line")
-    ax.axvline(40, color="#dc2626", linestyle="--", linewidth=1.2, label="40% severe line")
+    ax.set_title("MODIS center-weighted cloud-risk audit by metro (2013-2023)", fontsize=14, fontweight="bold")
+    ax.axvline(12, color="#f59e0b", linestyle="--", linewidth=1.2, label="12% concern line")
+    ax.axvline(20, color="#dc2626", linestyle="--", linewidth=1.2, label="20% severe line")
     ax.grid(axis="x", color="#e5e7eb", linewidth=0.8)
     ax.set_axisbelow(True)
     for spine in ["top", "right", "left"]:
@@ -366,17 +373,19 @@ def write_summary_markdown(
     branch_rows: list[dict[str, str]],
     metro_rows: list[dict[str, str]],
     year_rows: list[dict[str, str]],
+    selected_rows: list[dict[str, str]],
+    refresh_rows: list[dict[str, str]],
 ) -> None:
     summary_path = OUT_DIR / "DATA_INTEGRITY_AUDIT.md"
 
     severe_frames = sorted(
         year_rows,
-        key=lambda row: float(row["diffuse_cloud_pct"]),
+        key=lambda row: (float(row["core_diffuse_cloud_pct"]), float(row["diffuse_cloud_pct"])),
         reverse=True,
     )[:12]
     top_cloudy_metros = sorted(
         metro_rows,
-        key=lambda row: float(row["diffuse_mean_cloud_pct"]),
+        key=lambda row: float(row["core_diffuse_mean_cloud_pct"]),
         reverse=True,
     )[:8]
     aspect_rows = [
@@ -386,9 +395,14 @@ def write_summary_markdown(
     if not aspect_rows:
         aspect_rows = sorted(metro_rows, key=lambda row: float(row["aspect_error_pct"]))[:5]
 
-    severe_count = sum(float(row["diffuse_cloud_pct"]) >= 40.0 for row in year_rows)
+    severe_count = sum(float(row["core_diffuse_cloud_pct"]) >= 20.0 for row in year_rows)
     branch_problem = next((row for row in branch_rows if row["ref"] == "upstream/main"), None)
     restored_branch = next((row for row in branch_rows if row["ref"] == "upstream/rename-add-prefix"), None)
+    selected_replaced = sum(row["selected_date"] != row["baseline_08_01_date"] for row in selected_rows) if selected_rows else 0
+    selected_dark_gap = sum(float(row["selected_dark_or_empty_pct"]) > 5.0 for row in selected_rows) if selected_rows else 0
+    selected_high_diffuse = sum(float(row["selected_core_diffuse_cloud_pct"]) > 12.0 for row in selected_rows) if selected_rows else 0
+    refreshed_high_diffuse = sum(float(row["actual_core_diffuse_cloud_pct"]) > 12.0 for row in refresh_rows) if refresh_rows else 0
+    refreshed_missing = sum(int(row["missing_tiles"]) > 0 for row in refresh_rows) if refresh_rows else 0
 
     lines = [
         "# Data Integrity and MODIS Quality Audit",
@@ -399,10 +413,24 @@ def write_summary_markdown(
         "",
         f"- The local working tree currently contains the restored **14-metro** data inventory, but `{branch_problem['ref']}` still exposes only **{branch_problem['panel_metros']} metros** and **{branch_problem['imagery_metros']} imagery folders**.",
         f"- The most complete published branch is `{restored_branch['ref']}`, which exposes **{restored_branch['panel_metros']} metros** in the economic panel and **{restored_branch['imagery_metros']} metro imagery folders**.",
-        "- The fixed `08-01` MODIS acquisition date is a heuristic, not a guarantee of low cloud cover for every metro-year. A broader diffuse-cloud proxy shows multiple high-risk frames even when the notebook's strict near-white cloud mask stays low.",
-        "- The current notebook cloud mask likely **underestimates** cloud contamination because it only flags nearly pure white pixels. The audit therefore logs both the notebook-compatible strict metric and a broader diffuse-cloud risk proxy.",
+        (
+            f"- The MODIS acquisition workflow is now driven by an audited per-metro-year manifest: "
+            f"**{selected_replaced} of {len(selected_rows)}** metro-years moved away from the old `08-01` heuristic."
+            if selected_rows
+            else "- The MODIS acquisition workflow is expected to be driven by an audited per-metro-year manifest, but that manifest was not found."
+        ),
+        (
+            f"- The final selection rule now prioritizes full coverage, then center-region visibility, and only then whole-frame cloud minimization. In the refreshed imagery inventory there are **{refreshed_missing}** frames with missing tiles and **{selected_dark_gap}** selected dates with large dark-gap coverage."
+            if refresh_rows and selected_rows
+            else "- The final selection rule prioritizes full coverage, then center-region visibility, then whole-frame cloud minimization."
+        ),
+        (
+            f"- Residual center-region cloud risk is now concentrated in **{refreshed_high_diffuse}** refreshed metro-years with core diffuse-cloud score above 12%."
+            if refresh_rows
+            else "- Residual cloud risk is tracked with a center-weighted diffuse-cloud proxy because the notebook-compatible near-white mask is too permissive on hazy scenes."
+        ),
         "- Varying image dimensions are stable within each metro and remain exact multiples of 512 pixels, which is consistent with full GIBS tile mosaics. Rectangular rasters therefore do not automatically mean a city was cut in half.",
-        "- What is still unresolved is semantic bbox quality: stable tile geometry is reassuring, but a proper overlay review against metro boundaries is still needed before making strong urban-expansion claims.",
+        "- Stable tile geometry does not by itself prove semantic bbox correctness, so imagery should still be interpreted as raster-aligned metro views rather than exact legal boundaries.",
         "",
         "## 1. Branch and Inventory Status",
         "",
@@ -431,9 +459,9 @@ def write_summary_markdown(
                 ("modis_year_count", "MODIS years"),
                 ("viirs_year_count", "VIIRS years"),
                 ("strict_mean_cloud_pct", "Strict mean cloud %"),
-                ("diffuse_mean_cloud_pct", "Diffuse mean cloud %"),
-                ("diffuse_max_cloud_pct", "Worst diffuse cloud %"),
-                ("years_ge_40_diffuse", "Years >= 40% diffuse cloud"),
+                ("core_diffuse_mean_cloud_pct", "Core mean cloud %"),
+                ("core_diffuse_max_cloud_pct", "Worst core cloud %"),
+                ("years_ge_12_core_diffuse", "Years >= 12% core cloud"),
                 ("modis_dimensions", "MODIS dims"),
                 ("geometry_check", "Geometry check"),
             ],
@@ -443,7 +471,7 @@ def write_summary_markdown(
         "",
         "## 3. Worst Cloud Cases",
         "",
-        f"The current MODIS inventory contains **{severe_count} metro-year frames** with **diffuse-cloud risk at or above 40%**. This is a more realistic indicator for gray or hazy cloud scenes than the notebook's strict near-white mask.",
+        f"The current MODIS inventory contains **{severe_count} metro-year frames** with **core diffuse-cloud risk at or above 20%**. This center-weighted score is more aligned with city visibility than a whole-frame average.",
         "",
         markdown_table(
             severe_frames,
@@ -451,6 +479,7 @@ def write_summary_markdown(
                 ("metro", "Metro"),
                 ("year", "Year"),
                 ("strict_white_cloud_pct", "Strict cloud %"),
+                ("core_diffuse_cloud_pct", "Core diffuse %"),
                 ("diffuse_cloud_pct", "Diffuse cloud %"),
                 ("dark_border_pct", "Dark border %"),
                 ("width", "Width"),
@@ -461,7 +490,7 @@ def write_summary_markdown(
         "### Rationale",
         "",
         "- This directly supports the teammate concern that some MODIS frames are not visually reliable for interpreting urban expansion.",
-        "- The fact that the diffuse metric is often much larger than the notebook-compatible strict metric is itself a research problem worth documenting: the current cloud filter is probably too permissive for downstream interpretation.",
+        "- The center-weighted metric is intentionally stricter about city-core visibility than the older whole-frame rule, so it better matches the actual modeling use case.",
         "",
         "## 4. Dimension and Cropping Check",
         "",
@@ -484,17 +513,23 @@ def write_summary_markdown(
         "- Because the fetch notebook saves full 512-pixel tiles rather than exact geographic crops, aspect mismatch alone is not strong evidence of clipping. Stable `1x2` or `2x1` tile grids can still be expected outcomes.",
         "- This audit does **not** prove that every bbox is semantically correct; it only shows that the saved geometry is stable and tile-aligned rather than obviously broken.",
         "",
-        "## 5. Why August 1 Was Used, and Why It Is Not Enough",
+        "## 5. How MODIS Dates Are Selected Now",
         "",
-        "- `01_gibs_tile_fetcher_v5.ipynb` sets `MONTH_DAY = \"08-01\"` and comments that it is the default because August 1 often gives relatively low cloud cover in CONUS.",
-        "- That choice is a practical starting heuristic, not a validated per-metro or per-year optimum.",
-        "- The cloud audit above shows why the current README should state this explicitly: some metro-years still have severe cloud obstruction even after choosing the August 1 default.",
+        "- The original workflow used `08-01` as a practical starting heuristic. That rule is no longer treated as the source of truth for refreshed imagery.",
+        "- The final date-selection rule now prefers **complete frames** first, then minimizes **center-region cloud risk**, and only then uses whole-frame cloud metrics as tie-breakers.",
+        "- This ordering is intentional. A frame that preserves the city core and avoids black wedges is safer for downstream feature extraction than one that only looks cleaner in peripheral tiles.",
+        (
+            f"- The refreshed acquisition manifest lives at `data/imagery/modis_acquisition_manifest.csv`, and the residual QA contact sheet is saved at `{MODIS_RESIDUAL_QA_PATH.relative_to(REPO_ROOT)}`."
+            if refresh_rows
+            else "- The refreshed acquisition manifest is expected at `data/imagery/modis_acquisition_manifest.csv`."
+        ),
         "",
-        "## 6. Recommended Immediate Actions",
+        "## 6. Final Interpretation Notes",
         "",
-        "1. Restore the 14-metro dataset onto the team-facing `main` branch before anyone continues modeling from the published repo.",
-        "2. Replace the fixed-date MODIS fetch rule with a cloud-screened date search over a compact candidate window, using a broader diffuse-cloud score rather than only the strict near-white mask.",
-        "3. Run a manual GIS overlay review for metro bboxes before using imagery as evidence of urban expansion in the final report.",
+        "1. The refreshed MODIS acquisition manifest, tensors, and modeling tables should be treated as the current pre-final-model source of truth.",
+        "2. Residual high-cloud cases are now explicit and bounded; they remain usable for numeric summaries, but should be used cautiously as qualitative visual evidence.",
+        "3. Rectangular MODIS rasters are expected tile mosaics in this pipeline, so they should not be interpreted as accidental cropping by default.",
+        "4. The repo is now internally consistent around the restored 14-metro state even though the public `main` branch may lag that state.",
     ]
 
     summary_path.write_text("\n".join(lines) + "\n")
@@ -505,6 +540,8 @@ def main() -> None:
 
     branch_rows = branch_inventory()
     metro_rows, year_rows = audit_local_imagery()
+    selected_rows = read_optional_csv_rows(MODIS_SELECTED_PATH)
+    refresh_rows = read_optional_csv_rows(MODIS_REFRESH_LOG_PATH)
 
     write_csv(
         OUT_DIR / "branch_data_status.csv",
@@ -526,10 +563,14 @@ def main() -> None:
             "strict_max_cloud_pct",
             "diffuse_mean_cloud_pct",
             "diffuse_max_cloud_pct",
+            "core_diffuse_mean_cloud_pct",
+            "core_diffuse_max_cloud_pct",
             "years_ge_20_diffuse",
             "years_ge_40_diffuse",
+            "years_ge_12_core_diffuse",
             "severe_cloud_years",
             "max_dark_border_pct",
+            "max_core_dark_pct",
             "modis_tile_grid",
             "expected_bbox_aspect",
             "observed_image_aspect",
@@ -549,10 +590,12 @@ def main() -> None:
             "diffuse_cloud_pct",
             "dark_border_pct",
             "mean_brightness",
+            "core_diffuse_cloud_pct",
+            "core_dark_or_empty_pct",
         ],
     )
     save_cloud_summary_plot(metro_rows)
-    write_summary_markdown(branch_rows, metro_rows, year_rows)
+    write_summary_markdown(branch_rows, metro_rows, year_rows, selected_rows, refresh_rows)
 
     print(f"Wrote audit artifacts to {OUT_DIR.relative_to(REPO_ROOT)}")
 

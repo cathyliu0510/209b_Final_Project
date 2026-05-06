@@ -6,16 +6,17 @@ This audit was generated from the current working tree to explain the project's 
 
 - The local working tree currently contains the restored **14-metro** data inventory, but `upstream/main` still exposes only **5 metros** and **5 imagery folders**.
 - The most complete published branch is `upstream/rename-add-prefix`, which exposes **14 metros** in the economic panel and **14 metro imagery folders**.
-- The fixed `08-01` MODIS acquisition date is a heuristic, not a guarantee of low cloud cover for every metro-year. A broader diffuse-cloud proxy shows multiple high-risk frames even when the notebook's strict near-white cloud mask stays low.
-- The current notebook cloud mask likely **underestimates** cloud contamination because it only flags nearly pure white pixels. The audit therefore logs both the notebook-compatible strict metric and a broader diffuse-cloud risk proxy.
+- The MODIS acquisition workflow is now driven by an audited per-metro-year manifest: **136 of 154** metro-years moved away from the old `08-01` heuristic.
+- The final selection rule now prioritizes full coverage, then center-region visibility, and only then whole-frame cloud minimization. In the refreshed imagery inventory there are **0** frames with missing tiles and **0** selected dates with large dark-gap coverage.
+- Residual center-region cloud risk is now concentrated in **6** refreshed metro-years with core diffuse-cloud score above 12%.
 - Varying image dimensions are stable within each metro and remain exact multiples of 512 pixels, which is consistent with full GIBS tile mosaics. Rectangular rasters therefore do not automatically mean a city was cut in half.
-- What is still unresolved is semantic bbox quality: stable tile geometry is reassuring, but a proper overlay review against metro boundaries is still needed before making strong urban-expansion claims.
+- Stable tile geometry does not by itself prove semantic bbox correctness, so imagery should still be interpreted as raster-aligned metro views rather than exact legal boundaries.
 
 ## 1. Branch and Inventory Status
 
 | Ref | Commit | Panel rows | Panel metros | Imagery metros |
 | --- | --- | --- | --- | --- |
-| working-tree | 99e8c9e | 154 | 14 | 14 |
+| working-tree | 4567e02 | 154 | 14 | 14 |
 | upstream/main | e7c0b9a | 55 | 5 | 5 |
 | upstream/rename-add-prefix | 50fdca2 | 154 | 14 | 14 |
 | origin/main | 9aa50cc | 55 | 5 | 5 |
@@ -28,42 +29,42 @@ This audit was generated from the current working tree to explain the project's 
 
 ## 2. Metro-Level MODIS / VIIRS Inventory and Quality
 
-| Metro | MODIS years | VIIRS years | Strict mean cloud % | Diffuse mean cloud % | Worst diffuse cloud % | Years >= 40% diffuse cloud | MODIS dims | Geometry check |
+| Metro | MODIS years | VIIRS years | Strict mean cloud % | Core mean cloud % | Worst core cloud % | Years >= 12% core cloud | MODIS dims | Geometry check |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| las_vegas | 11 | 7 | 3.98 | 55.43 | 80.07 | 10 | 1024x512 | stable full-tile mosaic |
-| phoenix | 11 | 7 | 2.94 | 54.66 | 83.91 | 9 | 512x1024 | stable full-tile mosaic |
-| denver | 11 | 7 | 2.54 | 17.67 | 57.37 | 2 | 512x512 | stable full-tile mosaic |
-| dallas | 11 | 7 | 0.16 | 15.89 | 47.16 | 1 | 512x512 | stable full-tile mosaic |
-| raleigh | 11 | 7 | 0.06 | 12.81 | 31.91 | 0 | 1024x512 | stable full-tile mosaic |
-| tampa | 11 | 7 | 0.09 | 11.73 | 30.42 | 0 | 512x512 | stable full-tile mosaic |
-| jacksonville | 11 | 7 | 0.10 | 10.08 | 16.91 | 0 | 1024x512 | stable full-tile mosaic |
-| orlando | 11 | 7 | 0.09 | 9.04 | 18.37 | 0 | 512x512 | stable full-tile mosaic |
+| las_vegas | 11 | 7 | 1.73 | 15.10 | 28.45 | 6 | 1024x512 | stable full-tile mosaic |
+| phoenix | 11 | 7 | 0.17 | 4.74 | 11.59 | 0 | 512x1024 | stable full-tile mosaic |
+| raleigh | 11 | 7 | 0.14 | 1.83 | 6.44 | 0 | 1024x512 | stable full-tile mosaic |
+| jacksonville | 11 | 7 | 0.11 | 1.61 | 3.01 | 0 | 1024x512 | stable full-tile mosaic |
+| dallas | 11 | 7 | 0.04 | 1.54 | 4.29 | 0 | 512x512 | stable full-tile mosaic |
+| atlanta | 11 | 7 | 0.18 | 1.00 | 3.32 | 0 | 1024x1024 | stable full-tile mosaic |
+| tampa | 11 | 7 | 0.03 | 0.99 | 2.19 | 0 | 512x512 | stable full-tile mosaic |
+| denver | 11 | 7 | 0.05 | 0.97 | 1.78 | 0 | 512x512 | stable full-tile mosaic |
 
 The full metro-level audit table is saved as `deliverables/data_audit/metro_imagery_audit.csv`.
 
 ## 3. Worst Cloud Cases
 
-The current MODIS inventory contains **22 metro-year frames** with **diffuse-cloud risk at or above 40%**. This is a more realistic indicator for gray or hazy cloud scenes than the notebook's strict near-white mask.
+The current MODIS inventory contains **1 metro-year frames** with **core diffuse-cloud risk at or above 20%**. This center-weighted score is more aligned with city visibility than a whole-frame average.
 
-| Metro | Year | Strict cloud % | Diffuse cloud % | Dark border % | Width | Height |
-| --- | --- | --- | --- | --- | --- | --- |
-| phoenix | 2018 | 4.04 | 83.91 | 12.05 | 512 | 1024 |
-| las_vegas | 2021 | 10.05 | 80.07 | 0.00 | 1024 | 512 |
-| phoenix | 2015 | 9.04 | 79.16 | 0.00 | 512 | 1024 |
-| las_vegas | 2016 | 6.20 | 77.78 | 0.00 | 1024 | 512 |
-| las_vegas | 2015 | 5.88 | 65.40 | 0.00 | 1024 | 512 |
-| phoenix | 2022 | 7.98 | 65.27 | 0.00 | 512 | 1024 |
-| phoenix | 2016 | 2.10 | 61.09 | 0.00 | 512 | 1024 |
-| phoenix | 2019 | 0.45 | 60.68 | 23.36 | 512 | 1024 |
-| las_vegas | 2019 | 3.50 | 59.24 | 0.00 | 1024 | 512 |
-| las_vegas | 2014 | 8.05 | 58.47 | 0.00 | 1024 | 512 |
-| phoenix | 2013 | 2.97 | 58.05 | 0.00 | 512 | 1024 |
-| phoenix | 2021 | 0.60 | 57.57 | 0.00 | 512 | 1024 |
+| Metro | Year | Strict cloud % | Core diffuse % | Diffuse cloud % | Dark border % | Width | Height |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| las_vegas | 2015 | 1.75 | 28.45 | 23.62 | 0.00 | 1024 | 512 |
+| las_vegas | 2013 | 6.73 | 19.97 | 23.66 | 0.00 | 1024 | 512 |
+| las_vegas | 2019 | 0.29 | 18.71 | 25.81 | 2.30 | 1024 | 512 |
+| las_vegas | 2018 | 1.92 | 16.86 | 25.59 | 0.00 | 1024 | 512 |
+| las_vegas | 2021 | 3.32 | 16.64 | 26.87 | 0.00 | 1024 | 512 |
+| las_vegas | 2014 | 0.71 | 14.92 | 20.79 | 0.00 | 1024 | 512 |
+| phoenix | 2022 | 0.10 | 11.59 | 14.74 | 0.00 | 512 | 1024 |
+| las_vegas | 2017 | 0.57 | 10.84 | 13.87 | 0.00 | 1024 | 512 |
+| las_vegas | 2020 | 1.52 | 10.71 | 23.43 | 1.94 | 1024 | 512 |
+| las_vegas | 2016 | 0.39 | 10.65 | 9.17 | 0.00 | 1024 | 512 |
+| phoenix | 2018 | 1.06 | 10.24 | 10.30 | 0.01 | 512 | 1024 |
+| las_vegas | 2023 | 1.10 | 10.01 | 13.19 | 0.00 | 1024 | 512 |
 
 ### Rationale
 
 - This directly supports the teammate concern that some MODIS frames are not visually reliable for interpreting urban expansion.
-- The fact that the diffuse metric is often much larger than the notebook-compatible strict metric is itself a research problem worth documenting: the current cloud filter is probably too permissive for downstream interpretation.
+- The center-weighted metric is intentionally stricter about city-core visibility than the older whole-frame rule, so it better matches the actual modeling use case.
 
 ## 4. Dimension and Cropping Check
 
@@ -85,40 +86,16 @@ The current MODIS inventory contains **22 metro-year frames** with **diffuse-clo
 - Because the fetch notebook saves full 512-pixel tiles rather than exact geographic crops, aspect mismatch alone is not strong evidence of clipping. Stable `1x2` or `2x1` tile grids can still be expected outcomes.
 - This audit does **not** prove that every bbox is semantically correct; it only shows that the saved geometry is stable and tile-aligned rather than obviously broken.
 
-## 5. Why August 1 Was Used, and Why It Is Not Enough
+## 5. How MODIS Dates Are Selected Now
 
-- `01_gibs_tile_fetcher_v5.ipynb` sets `MONTH_DAY = "08-01"` and comments that it is the default because August 1 often gives relatively low cloud cover in CONUS.
-- That choice is a practical starting heuristic, not a validated per-metro or per-year optimum.
-- The cloud audit above shows why the current README should state this explicitly: some metro-years still have severe cloud obstruction even after choosing the August 1 default.
+- The original workflow used `08-01` as a practical starting heuristic. That rule is no longer treated as the source of truth for refreshed imagery.
+- The final date-selection rule now prefers **complete frames** first, then minimizes **center-region cloud risk**, and only then uses whole-frame cloud metrics as tie-breakers.
+- This ordering is intentional. A frame that preserves the city core and avoids black wedges is safer for downstream feature extraction than one that only looks cleaner in peripheral tiles.
+- The refreshed acquisition manifest lives at `data/imagery/modis_acquisition_manifest.csv`, and the residual QA contact sheet is saved at `deliverables/data_audit/modis_residual_qa.png`.
 
-## 6. Candidate-Date Search Follow-Up
+## 6. Final Interpretation Notes
 
-A compact candidate-date search was run for the highest-risk metros (`phoenix`, `las_vegas`, `denver`, `dallas`) across `2013-2023`, comparing:
-
-- `07-01`
-- `07-15`
-- `08-01`
-- `08-15`
-- `09-01`
-
-Result summary:
-
-- in **34 of 44** searched metro-years, `08-01` was **not** the best candidate
-- some of the largest improvements were:
-  - `phoenix 2018`: `08-01` diffuse cloud `83.91%` → `2018-09-01` diffuse cloud `15.93%`
-  - `denver 2018`: `08-01` diffuse cloud `57.37%` → `2018-09-01` diffuse cloud `1.87%`
-  - `las_vegas 2021`: `08-01` diffuse cloud `80.07%` → `2021-07-15` diffuse cloud `39.03%`
-  - `dallas 2022`: `08-01` diffuse cloud `47.16%` → `2022-08-15` diffuse cloud `7.15%`
-
-Artifacts:
-
-- `deliverables/data_audit/modis_date_search/modis_date_search_summary.md`
-- `deliverables/data_audit/modis_date_search/modis_date_candidates.csv`
-- `scripts/search_modis_candidate_dates.py`
-
-## 7. Recommended Immediate Actions
-
-1. Restore the 14-metro dataset onto the team-facing `main` branch before anyone continues modeling from the published repo.
-2. Regenerate the worst MODIS metros first using the searched candidate dates, starting with `Phoenix`, `Las Vegas`, `Denver`, and `Dallas`.
-3. Replace the fixed-date MODIS fetch rule in the acquisition notebook with the new candidate-date search workflow, using a broader diffuse-cloud score rather than only the strict near-white mask.
-4. Run a manual GIS overlay review for metro bboxes before using imagery as evidence of urban expansion in the final report.
+1. The refreshed MODIS acquisition manifest, tensors, and modeling tables should be treated as the current pre-final-model source of truth.
+2. Residual high-cloud cases are now explicit and bounded; they remain usable for numeric summaries, but should be used cautiously as qualitative visual evidence.
+3. Rectangular MODIS rasters are expected tile mosaics in this pipeline, so they should not be interpreted as accidental cropping by default.
+4. The repo is now internally consistent around the restored 14-metro state even though the public `main` branch may lag that state.
