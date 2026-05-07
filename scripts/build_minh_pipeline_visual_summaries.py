@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import re
+import textwrap
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -308,43 +309,58 @@ def build_stage4_retrieval_chart() -> None:
     savefig(fig, "minh_stage4_gdp_retrieval.png")
 
 
-def build_stage4_target_chart() -> None:
-    target_path = DELIVERABLES_DIR / "minh_stage4_target_check.csv"
-    if not target_path.exists():
+def build_stage4_baseline_progress_chart() -> None:
+    progress_path = DELIVERABLES_DIR / "minh_baseline_progress.csv"
+    if not progress_path.exists():
         return
 
-    df = pd.read_csv(target_path)
-    df["delta"] = df["Train-mean MAE"] - df["Retrieval MAE"]
-    df = df.sort_values("delta")
+    df = pd.read_csv(progress_path)
 
     sns.set_theme(style="whitegrid", rc=SNS_RC)
-    fig, ax = plt.subplots(figsize=(8.8, 5.4))
-    colors = ["#0f766e" if v > 0 else "#dc2626" for v in df["delta"]]
-    ax.barh(df["Target"], df["delta"], color=colors, edgecolor="white")
-    ax.axvline(0, color="#334155", linewidth=1)
-    for y, v in enumerate(df["delta"]):
-        ax.text(
-            v + (0.15 if v >= 0 else -0.15),
-            y,
-            f"{v:+.3f}",
-            va="center",
-            ha="left" if v >= 0 else "right",
-            fontsize=9,
+    fig, ax = plt.subplots(figsize=(11.2, 4.8))
+    ax.axis("off")
+
+    table_rows = []
+    for _, row in df.iterrows():
+        table_rows.append(
+            [
+                textwrap.fill(str(row["Dimension"]), width=24),
+                textwrap.fill(str(row["MS3 baseline notebook"]), width=38),
+                textwrap.fill(str(row["Final modeling notebook"]), width=42),
+            ]
         )
-    ax.set_xlabel("Improvement over train-mean baseline (MAE reduction)")
-    ax.set_ylabel("")
-    ax.set_title("Additional Target Check: Where Retrieval Helps", fontweight="bold")
-    fig.subplots_adjust(bottom=0.18)
+    table = ax.table(
+        cellText=table_rows,
+        colLabels=["Dimension", "MS3 baseline notebook", "Final modeling notebook"],
+        cellLoc="left",
+        colLoc="left",
+        loc="center",
+        colWidths=[0.20, 0.36, 0.44],
+    )
+    table.auto_set_font_size(False)
+    table.set_fontsize(9.6)
+    table.scale(1, 2.45)
+
+    for (row, col), cell in table.get_celld().items():
+        cell.set_edgecolor("#cbd5e1")
+        if row == 0:
+            cell.set_facecolor("#e2e8f0")
+            cell.set_text_props(weight="bold", color="#0f172a")
+        elif col == 2:
+            cell.set_facecolor("#ecfdf5")
+        else:
+            cell.set_facecolor("white")
+
+    fig.suptitle("Stage 4 Summary: Improvement Over the MS3 Baseline", fontsize=18, fontweight="bold", y=0.96)
     fig.text(
         0.5,
-        0.04,
-        "Positive values are better. On the 14-city rerun, the retrieval gain is concentrated in GDP growth.",
-        fontsize=9.5,
+        0.05,
+        "The final notebook moves from lagged tabular forecasting to image-only economic analogue retrieval.",
+        fontsize=10.5,
         color="#334155",
         ha="center",
     )
-    sns.despine(ax=ax)
-    savefig(fig, "minh_stage4_target_check.png")
+    savefig(fig, "minh_stage4_baseline_progress.png")
 
 
 def main() -> None:
@@ -355,7 +371,7 @@ def main() -> None:
     build_stage3_reconstruction_chart(nb)
     build_stage4_tuning_chart()
     build_stage4_retrieval_chart()
-    build_stage4_target_chart()
+    build_stage4_baseline_progress_chart()
     print("Wrote Minh pipeline visual summaries to figures/")
 
 
