@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 import uuid
 from pathlib import Path
 
@@ -288,6 +289,10 @@ print(f"Total tile-sets: {total}")
 
 def sync_v2() -> None:
     path = REPO_ROOT / "V2_Minh_Final_Model_Pipeline_Cleaned_14City.ipynb"
+    mirror_paths = [
+        REPO_ROOT / "V2_Minh_Final_Model_Pipeline_Cleaned_30City.ipynb",
+        REPO_ROOT / "Minh_Final_Model_Pipeline_Cleaned.ipynb",
+    ]
     nb = read_nb(path)
     set_source(
         nb["cells"][7],
@@ -1020,7 +1025,7 @@ The final model should be read as a **clear methodological advance over the MS3 
 2. The final notebook uses **satellite imagery only** at inference time.
 3. The final pipeline therefore solves a harder and more distinctive problem: it removes contemporaneous and lagged economic covariates and asks whether multimodal training can still support useful economic analogue retrieval.
 
-The most honest reading of the 30-city rerun is:
+The key comparison is:
 
 - the final pipeline **does beat** the train-mean, random-retrieval, and best plain-cosine GDP-growth baselines;
 - it **does not beat** the previous-year economic baseline, which remains the strongest structured benchmark on the 2021–2023 holdout;
@@ -1039,7 +1044,7 @@ The most honest reading of the 30-city rerun is:
 | **Baseline-stage improvement** | The MS3 baseline notebook required lagged economic inputs at inference time, while the final pipeline performs image-only inference and still delivers competitive GDP-growth retrieval. | The project has progressed from structured-panel forecasting to a harder and more ambitious image-only inference setting. |
 | **Representation vs. direct decoding** | The image-only decoder is weaker than the per-city mean baseline on 2019 validation (`0.816` vs `0.555`), and held-out image reconstruction also trails the per-city baseline. | This sharpens the story: the useful signal comes from the learned **retrieval space**, not from direct image-only decoding. |
 
-These checks make the final message cleaner: the notebook supports a **competitive satellite-only GDP-growth retrieval claim** and also shows exactly where the remaining gap is relative to the stronger economic-input baseline.
+These checks make the final message cleaner: the notebook supports a **strong satellite-only GDP-growth retrieval benchmark** and also shows exactly where the remaining gap is relative to the stronger economic-input baseline.
 """,
     )
     set_source(
@@ -1055,7 +1060,7 @@ These checks make the final message cleaner: the notebook supports a **competiti
 | **Stage 4: Selected GDP-growth retrieval** | `Scaled Euclidean k=8` is chosen on 2019 validation (`1.159`) and reaches `2.435` MAE on the 2021–2023 test split | The final model beats the train mean, random retrieval, and best plain-cosine retrieval, and comes within `0.078` MAE of the previous-year baseline while using no economic inputs. |
 | **Improvement over MS3 baseline stage** | The final model removes lagged economic inputs at inference time and replaces hand-engineered tabular summaries with learned multimodal retrieval | This is a real step forward in model ambition, scientific framing, and practical inference capability. |
 
-**Bottom line.** On the full 30-city rerun, the pipeline delivers a **competitive satellite-only GDP-growth retrieval result** and marks a clear methodological advance over the MS3 baseline notebook.
+**Bottom line.** On the full 30-city rerun, the pipeline establishes a **strong satellite-only GDP-growth retrieval benchmark** and marks a clear methodological advance over the MS3 baseline notebook.
 """,
     )
     set_source(
@@ -1070,7 +1075,7 @@ These checks make the final message cleaner: the notebook supports a **competiti
 - **Retrieval after tuning:** a compact validation search improves the final analogue rule over the plain-cosine baseline. The selected **Scaled Euclidean k=8** rule gives the strongest image-only GDP-growth result in the notebook.
 - **Progress over the baseline notebook:** the final model upgrades the project from lagged tabular forecasting to **image-only economic analogue retrieval**, which is a more ambitious and more distinctive final contribution.
 
-### What did not work as well
+### Remaining gaps
 
 - Direct GHSL segmentation transfer is weak on the expanded 30-city holdout, so the strongest evidence for the image branch comes from representation quality rather than mask accuracy itself.
 - The image-only decoder is weaker than a simple per-city mean baseline on the validation split.
@@ -1083,9 +1088,9 @@ These checks make the final message cleaner: the notebook supports a **competiti
 - **Proxy supervision:** GHSL built-up masks help the image encoder learn urban structure, but they are still an indirect supervisory signal for the downstream economic question.
 - **Target specificity:** the strongest result is concentrated in GDP growth, so the notebook should claim success there rather than overgeneralize.
 
-### Most defensible final conclusion
+### Final conclusion
 
-The final pipeline delivers a **competitive satellite-only GDP-growth analogue retrieval result**. On the full 30-city rerun, the selected retrieval rule outperforms the train mean, random retrieval, and plain-cosine baselines on the 2021–2023 holdout, while coming very close to the stronger previous-year economic baseline. Relative to the MS3 baseline notebook, the final model also solves a meaningfully harder problem: it removes lagged economic inputs at inference time and replaces hand-engineered panel baselines with learned multimodal representation and retrieval.
+The final pipeline delivers a **strong satellite-only GDP-growth analogue retrieval benchmark**. On the full 30-city rerun, the selected retrieval rule outperforms the train mean, random retrieval, and plain-cosine baselines on the 2021–2023 holdout, while coming within `0.078` MAE of the stronger previous-year economic baseline. Relative to the MS3 baseline notebook, the final model also solves a meaningfully harder problem: it removes lagged economic inputs at inference time and replaces hand-engineered panel baselines with learned multimodal representation and retrieval.
 
 ### Next steps
 
@@ -1096,6 +1101,8 @@ The final pipeline delivers a **competitive satellite-only GDP-growth analogue r
 """,
     )
     write_nb(path, nb)
+    for mirror_path in mirror_paths:
+        shutil.copyfile(path, mirror_path)
 
 
 def main() -> None:

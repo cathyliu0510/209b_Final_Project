@@ -248,11 +248,12 @@ def build_stage4_tuning_chart() -> None:
         return
 
     df = pd.read_csv(tuning_path).sort_values(["val_mae", "test_mae"]).head(6).copy()
+    selected_model = str(df.iloc[0]["model"])
     df["Display"] = df["model"] + df["test_mae"].map(lambda v: f"  |  test {v:.3f}")
 
     sns.set_theme(style="whitegrid", rc=SNS_RC)
     fig, ax = plt.subplots(figsize=(9.0, 5.4))
-    colors = ["#0f766e" if "Scaled Manhattan k=3" in model else "#cbd5e1" for model in df["model"]]
+    colors = ["#0f766e" if model == selected_model else "#cbd5e1" for model in df["model"]]
     ax.barh(df["Display"], df["val_mae"], color=colors, edgecolor="white")
     for y, v in enumerate(df["val_mae"]):
         ax.text(v + 0.015, y, f"{v:.3f}", va="center", ha="left", fontsize=9)
@@ -263,7 +264,7 @@ def build_stage4_tuning_chart() -> None:
     fig.text(
         0.5,
         0.04,
-        "Lower is better. A small validation search selects Scaled Manhattan k=3 without adding a more complex model.",
+        f"Lower is better. A small validation search selects {selected_model} without adding a more complex model.",
         fontsize=9.5,
         color="#334155",
         ha="center",
@@ -282,7 +283,7 @@ def build_stage4_retrieval_chart() -> None:
 
     colors = []
     for method in df["Method"]:
-        if method == "Scaled Manhattan k=3 (selected)":
+        if "(selected)" in str(method):
             colors.append("#0f766e")
         elif str(method).startswith("Cosine"):
             colors.append("#94a3b8")
