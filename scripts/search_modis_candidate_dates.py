@@ -17,6 +17,7 @@ from __future__ import annotations
 import argparse
 import csv
 import io
+import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from urllib.error import HTTPError, URLError
@@ -25,8 +26,13 @@ from urllib.request import Request, urlopen
 import numpy as np
 from PIL import Image
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from metro_config import BBOXES
+
+
 OUT_DIR = REPO_ROOT / "deliverables" / "data_audit" / "modis_date_search"
 GIBS_BASE = "https://gibs.earthdata.nasa.gov/wmts/epsg4326/best"
 LAYER_NAME = "MODIS_Terra_CorrectedReflectance_TrueColor"
@@ -35,11 +41,7 @@ EXT = "jpg"
 ZOOM = 6
 TILE_SIZE_PX = 512
 
-DEFAULT_METROS = [
-    "atlanta", "austin", "charlotte", "dallas", "denver", "houston",
-    "jacksonville", "las_vegas", "nashville", "orlando", "phoenix",
-    "raleigh", "san_antonio", "tampa",
-]
+DEFAULT_METROS = list(BBOXES.keys())
 DEFAULT_YEARS = list(range(2013, 2024))
 DEFAULT_DATES = [
     "04-01",
@@ -59,22 +61,7 @@ DEFAULT_DATES = [
 ]
 CORE_FRACTION = 0.6
 
-METROS = {
-    "atlanta": (-84.55, 33.65, -84.25, 33.90),
-    "austin": (-97.94, 30.10, -97.50, 30.52),
-    "charlotte": (-81.00, 35.10, -80.70, 35.35),
-    "dallas": (-97.08, 32.62, -96.55, 33.02),
-    "denver": (-105.10, 39.60, -104.75, 39.85),
-    "houston": (-95.60, 29.65, -95.15, 29.95),
-    "jacksonville": (-81.84, 30.10, -81.33, 30.54),
-    "las_vegas": (-115.35, 36.05, -115.00, 36.30),
-    "nashville": (-87.05, 35.96, -86.52, 36.35),
-    "orlando": (-81.55, 28.40, -81.20, 28.65),
-    "phoenix": (-112.32, 33.29, -111.65, 33.82),
-    "raleigh": (-78.80, 35.70, -78.50, 35.95),
-    "san_antonio": (-98.65, 29.35, -98.35, 29.55),
-    "tampa": (-82.55, 27.90, -82.35, 28.10),
-}
+METROS = BBOXES
 
 
 def deg_to_tile_4326(lat: float, lon: float, zoom: int) -> tuple[int, int]:

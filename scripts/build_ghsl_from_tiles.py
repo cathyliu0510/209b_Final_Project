@@ -14,23 +14,34 @@ from __future__ import annotations
 
 import math
 import os
+import sys
+import time
+from contextlib import ExitStack
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Iterable, Tuple
 
+import numpy as np
 import pandas as pd
 import requests
 import rasterio
 from rasterio.enums import Resampling
+from rasterio.merge import merge
+from rasterio.warp import reproject
 
-
-EPOCHS = [2000, 2005, 2010, 2015, 2020]
 BASE_URL = (
     "https://jeodpp.jrc.ec.europa.eu/ftp/jrc-opendata/GHSL/"
     "GHS_BUILT_S_GLOBE_R2023A"
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from metro_config import BBOXES, GHSL_EPOCHS, GHSL_TILE_SPANS, METRO_CONFIGS
+
+
+EPOCHS = GHSL_EPOCHS
 IMAGERY_DIR = REPO_ROOT / "data" / "imagery"
 GHSL_RAW_DIR = REPO_ROOT / "data" / "raw" / "ghsl" / "tiles"
 GHSL_OUT_DIR = REPO_ROOT / "data" / "ghsl"
@@ -39,24 +50,11 @@ GHSL_OUT_DIR = REPO_ROOT / "data" / "ghsl"
 @dataclass(frozen=True)
 class MetroConfig:
     bbox: Tuple[float, float, float, float]
-    tile: Tuple[int, int]
+    tiles: Tuple[Tuple[int, int], ...]
 
 
 METROS: Dict[str, MetroConfig] = {
-    "atlanta": MetroConfig((-84.55, 33.65, -84.25, 33.90), (6, 10)),
-    "austin": MetroConfig((-97.94, 30.10, -97.50, 30.52), (6, 9)),
-    "charlotte": MetroConfig((-81.00, 35.10, -80.70, 35.35), (6, 10)),
-    "dallas": MetroConfig((-97.08, 32.62, -96.55, 33.02), (6, 9)),
-    "denver": MetroConfig((-105.10, 39.60, -104.75, 39.85), (5, 8)),
-    "houston": MetroConfig((-95.60, 29.65, -95.15, 29.95), (6, 9)),
-    "jacksonville": MetroConfig((-81.84, 30.10, -81.33, 30.54), (6, 10)),
-    "las_vegas": MetroConfig((-115.35, 36.05, -115.00, 36.30), (6, 7)),
-    "nashville": MetroConfig((-87.05, 35.96, -86.52, 36.35), (6, 10)),
-    "orlando": MetroConfig((-81.55, 28.40, -81.20, 28.65), (7, 10)),
-    "phoenix": MetroConfig((-112.32, 33.29, -111.65, 33.82), (6, 7)),
-    "raleigh": MetroConfig((-78.80, 35.70, -78.50, 35.95), (6, 11)),
-    "san_antonio": MetroConfig((-98.65, 29.35, -98.35, 29.55), (6, 9)),
-    "tampa": MetroConfig((-82.55, 27.90, -82.35, 28.10), (7, 10)),
+    metro: MetroConfig(BBOXES[metro], GHSL_TILE_SPANS[metro]) for metro in METRO_CONFIGS
 }
 
 
@@ -84,17 +82,36 @@ def vsizip_tif_path(epoch: int, row: int, col: int) -> str:
     return f"/vsizip/{zpath}/{tif_name(epoch, row, col)}"
 
 
-def download_file(url: str, dest: Path) -> None:
+def download_file(url: str, dest: Path, attempts: int = 5) -> None:
     dest.parent.mkdir(parents=True, exist_ok=True)
     if dest.exists():
         return
 
-    with requests.get(url, stream=True, timeout=120) as resp:
-        resp.raise_for_status()
-        with dest.open("wb") as fh:
-            for chunk in resp.iter_content(chunk_size=1024 * 1024):
-                if chunk:
-                    fh.write(chunk)
+    last_err: Exception | None = None
+    tmp = dest.with_suffix(dest.suffix + ".partial")
+    for attempt in range(1, attempts + 1):
+        try:
+            if tmp.exists():
+                tmp.unlink()
+            with requests.get(url, stream=True, timeout=(30, 180)) as resp:
+                resp.raise_for_status()
+                with tmp.open("wb") as fh:
+                    for chunk in resp.iter_content(chunk_size=1024 * 1024):
+                        if chunk:
+                            fh.write(chunk)
+            tmp.replace(dest)
+            return
+        except Exception as err:
+            last_err = err
+            print(
+                f"  retry {attempt}/{attempts}: {dest.name} failed with {err}",
+                flush=True,
+            )
+            if tmp.exists():
+                tmp.unlink()
+            if attempt < attempts:
+                time.sleep(min(10 * attempt, 30))
+    raise RuntimeError(f"Failed to download {url} after {attempts} attempts") from last_err
 
 
 def pixel_area_km2(transform: rasterio.Affine, center_lat_deg: float) -> float:
@@ -118,14 +135,14 @@ def modis_reference(metro: str) -> dict:
 
 
 def ensure_needed_tiles() -> None:
-    needed = sorted({cfg.tile for cfg in METROS.values()})
-    print("Downloading required GHSL tiles...")
+    needed = sorted({tile for cfg in METROS.values() for tile in cfg.tiles})
+    print("Downloading required GHSL tiles...", flush=True)
     for epoch in EPOCHS:
         for row, col in needed:
             dest = local_zip_path(epoch, row, col)
             url = zip_url(epoch, row, col)
             download_file(url, dest)
-            print(f"  ready: {dest.relative_to(REPO_ROOT)}")
+            print(f"  ready: {dest.relative_to(REPO_ROOT)}", flush=True)
 
 
 def build_outputs() -> pd.DataFrame:
@@ -135,38 +152,43 @@ def build_outputs() -> pd.DataFrame:
     for metro, cfg in METROS.items():
         min_lon, min_lat, max_lon, max_lat = cfg.bbox
         center_lat = (min_lat + max_lat) / 2.0
-        row, col = cfg.tile
         metro_dir = GHSL_OUT_DIR / metro
         metro_dir.mkdir(parents=True, exist_ok=True)
         ref = modis_reference(metro)
 
         for epoch in EPOCHS:
-            tile_path = vsizip_tif_path(epoch, row, col)
             out_path = metro_dir / f"{epoch}.tif"
 
-            with rasterio.open(tile_path) as src:
-                bounds = src.bounds
-                if not (
-                    bounds.left <= min_lon <= bounds.right
-                    and bounds.left <= max_lon <= bounds.right
-                    and bounds.bottom <= min_lat <= bounds.top
-                    and bounds.bottom <= max_lat <= bounds.top
-                ):
-                    raise ValueError(
-                        f"{metro} bbox is not fully inside R{row}_C{col} for {epoch}: "
-                        f"{bounds}"
-                    )
-
-                window = src.window(min_lon, min_lat, max_lon, max_lat)
-                src_arr = src.read(
-                    1,
-                    window=window,
-                    out_shape=(ref["height"], ref["width"]),
+            tile_paths = [vsizip_tif_path(epoch, row, col) for row, col in cfg.tiles]
+            with ExitStack() as stack:
+                srcs = [stack.enter_context(rasterio.open(tile_path)) for tile_path in tile_paths]
+                mosaic, mosaic_transform = merge(
+                    srcs,
+                    bounds=(min_lon, min_lat, max_lon, max_lat),
+                    res=(abs(srcs[0].transform.a), abs(srcs[0].transform.e)),
+                    nodata=srcs[0].nodata,
+                    resampling=Resampling.nearest,
+                    method="first",
+                )
+                native_arr = mosaic[0]
+                nodata = srcs[0].nodata
+                src_arr = np.full(
+                    (ref["height"], ref["width"]),
+                    nodata if nodata is not None else 0,
+                    dtype=native_arr.dtype,
+                )
+                reproject(
+                    source=native_arr,
+                    destination=src_arr,
+                    src_transform=mosaic_transform,
+                    src_crs=srcs[0].crs,
+                    dst_transform=ref["transform"],
+                    dst_crs=ref["crs"],
+                    src_nodata=nodata,
+                    dst_nodata=nodata if nodata is not None else 0,
                     resampling=Resampling.nearest,
                 )
-                native_arr = src.read(1, window=window)
-                nodata = src.nodata
-                native_px_area = pixel_area_km2(src.transform, center_lat)
+                native_px_area = pixel_area_km2(mosaic_transform, center_lat)
 
             if nodata is not None:
                 binary = ((src_arr >= 1000) & (src_arr != nodata)).astype("uint8")
@@ -198,7 +220,8 @@ def build_outputs() -> pd.DataFrame:
             )
             print(
                 f"  built: {out_path.relative_to(REPO_ROOT)} "
-                f"({built_km2:.3f} km^2)"
+                f"({built_km2:.3f} km^2)",
+                flush=True,
             )
 
     summary = (
@@ -228,7 +251,10 @@ def main() -> None:
     ensure_needed_tiles()
     summary = build_outputs()
     compare_existing(existing_summary, summary)
-    print(f"saved summary: {(GHSL_OUT_DIR / 'built_up_summary.csv').relative_to(REPO_ROOT)}")
+    print(
+        f"saved summary: {(GHSL_OUT_DIR / 'built_up_summary.csv').relative_to(REPO_ROOT)}",
+        flush=True,
+    )
 
 
 if __name__ == "__main__":

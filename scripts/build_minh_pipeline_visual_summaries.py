@@ -78,9 +78,10 @@ def build_stage1_city_chart(nb: dict) -> None:
     sns.set_theme(style="whitegrid", rc=SNS_RC)
     fig, ax = plt.subplots(figsize=(8.8, 6.3))
     ax.barh(df["metro"], df["IoU"], color="#0f766e", edgecolor="white", height=0.72)
+    label_dx = max(df["IoU"].max() * 0.04, 0.0002)
     for y, v in enumerate(df["IoU"]):
-        ax.text(v + 0.01, y, f"{v:.3f}", va="center", ha="left", fontsize=9)
-    ax.set_xlim(0, max(0.75, df["IoU"].max() + 0.07))
+        ax.text(v + label_dx, y, f"{v:.3f}", va="center", ha="left", fontsize=9)
+    ax.set_xlim(0, max(df["IoU"].max() * 1.35, 0.012))
     ax.set_xlabel("IoU on 2020 GHSL holdout")
     ax.set_ylabel("")
     ax.set_title("Stage 1 Summary: Per-City Segmentation Performance", fontweight="bold")
@@ -88,7 +89,7 @@ def build_stage1_city_chart(nb: dict) -> None:
     fig.text(
         0.5,
         0.03,
-        "Higher is better. Built-up signal is real across the 14-city holdout, but performance varies by metro.",
+        "Higher is better. On the 30-city holdout, direct segmentation is difficult; this stage is best read as representation pretraining, not the final claim.",
         fontsize=9.5,
         color="#334155",
         ha="center",
@@ -232,7 +233,7 @@ def build_stage3_reconstruction_chart(nb: dict) -> None:
     fig.text(
         0.5,
         0.04,
-        "Lower is better. On the 14-city rerun, the per-city baseline still outperforms the VAE decoder on both modalities.",
+        "Lower is better. On the 30-city rerun, the per-city baseline still outperforms the VAE decoder on both modalities.",
         fontsize=9.5,
         color="#334155",
         ha="center",
@@ -300,7 +301,7 @@ def build_stage4_retrieval_chart() -> None:
     fig.text(
         0.5,
         0.04,
-        "Lower is better. The selected scale-aware retrieval rule is modestly stronger than the plain-cosine baseline.",
+        "Lower is better. The selected image-only retrieval rule beats the train mean and plain cosine, but remains slightly behind the previous-year economic baseline.",
         fontsize=9.5,
         color="#334155",
         ha="center",

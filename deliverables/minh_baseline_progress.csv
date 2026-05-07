@@ -1,4 +1,4 @@
 Dimension,MS3 baseline notebook,Final modeling notebook
 Inference-time inputs,Lagged economic indicators + lagged raw satellite summaries,Satellite imagery only
 Main model family,Ridge / Gradient Boosting / LSTM on a lagged tabular panel,GHSL ResNet + MLP encoder + VAE + analogue retrieval
-Strongest supported result,Employment-growth forecasting benchmark with structured inputs,Benchmark-winning GDP-growth retrieval from imagery alone
+Strongest supported result,Employment-growth forecasting benchmark with structured inputs,Competitive satellite-only GDP-growth retrieval from imagery alone
