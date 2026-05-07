@@ -1,0 +1,6 @@
+Method,test_mae
+Train mean,2.6343664098712893
+Random retrieval (avg 100),2.8801243991150596
+Previous-year value,2.840887284231374
+Cosine k=5,2.4844748066611957
+Scaled Manhattan k=3 (selected),2.400002516172304
