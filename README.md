@@ -2,7 +2,7 @@
 
 **AC209b / CS1090B Final Project, Canvas Group 12**
 
-This project studies whether satellite imagery can support economic monitoring when official economic data are delayed, sparse, or incomplete. The final modeling task is **satellite-only economic analogue retrieval**: given a city-year satellite image, retrieve historical city-years with similar economic structure and use those analogues to estimate GDP growth.
+This project studies whether satellite imagery can support economic monitoring when official economic data are delayed, sparse, or incomplete. The final modeling task is **satellite-only economic analogue retrieval**: given a city-year satellite image, retrieve historical city-years with similar economic structure and use those analogues to estimate GDP growth rate.
 
 ## Final Deliverables
 
@@ -30,7 +30,7 @@ The final system does not claim that raw imagery directly determines GDP. Instea
 | Satellite inputs | MODIS RGB and VIIRS nighttime radiance |
 | Built-up supervision | GHSL built-up surface masks |
 | Economic indicators | BEA GDP, BLS employment / unemployment, Census building permits |
-| Target for final benchmark | Year-over-year real GDP growth |
+| Target for final benchmark | Year-over-year real GDP growth rate |
 | Train split | 2013-2018 |
 | Validation split | 2019 |
 | Test split | 2021-2023 |
@@ -43,13 +43,13 @@ The final system does not claim that raw imagery directly determines GDP. Instea
 | Image encoder | ResNet-18 fine-tuned with GHSL built-up supervision | Learns urban-aware satellite embeddings from MODIS RGB and VIIRS nightlights |
 | Economic encoder | MLP autoencoder selected over GRU and LSTM | Compresses economic indicators into a compact city-year economic state |
 | Multimodal alignment | Contrastive VAE with modality dropout | Aligns satellite and economic embeddings in a shared 16-dimensional latent space |
-| Satellite-only inference | k-nearest-neighbor retrieval in the learned latent space | Retrieves historical analogue city-years and averages their GDP growth |
+| Satellite-only inference | k-nearest-neighbor retrieval in the learned latent space | Retrieves historical analogue city-years and averages their GDP growth rate |
 
 ## Final Results
 
 The selected retrieval rule is **Scaled Euclidean k=8**, chosen on the 2019 validation set and then frozen before final testing.
 
-| Method | 2021-2023 test MAE on GDP growth |
+| Method | 2021-2023 test MAE on GDP growth rate |
 | --- | ---: |
 | Random retrieval, averaged over 100 draws | 2.923 |
 | Training-set mean | 2.558 |
@@ -65,10 +65,10 @@ The final satellite-only retrieval model outperforms the naive no-economics base
 | --- | --- |
 | Satellite imagery overview | [`figures/01_satellite_imagery_grid.png`](figures/01_satellite_imagery_grid.png) |
 | COVID structural break | [`figures/10_covid_impact_indexed.png`](figures/10_covid_impact_indexed.png) |
-| GHSL built-up change vs. GDP growth | [`figures/17_ghsl_vs_gdp_growth.png`](figures/17_ghsl_vs_gdp_growth.png) |
+| GHSL built-up change vs. GDP growth rate | [`figures/17_ghsl_vs_gdp_growth.png`](figures/17_ghsl_vs_gdp_growth.png) |
 | Latent economic structure | [`figures/09b_umap_economic.png`](figures/09b_umap_economic.png) |
 | Retrieval tuning summary | [`figures/minh_stage4_tuning_summary.png`](figures/minh_stage4_tuning_summary.png) |
-| Final GDP-growth benchmark | [`figures/minh_stage4_gdp_retrieval.png`](figures/minh_stage4_gdp_retrieval.png) |
+| Final GDP-growth-rate benchmark | [`figures/minh_stage4_gdp_retrieval.png`](figures/minh_stage4_gdp_retrieval.png) |
 
 ## Reproducibility Notes
 
