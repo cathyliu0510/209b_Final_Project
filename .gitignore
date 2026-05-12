@@ -1,0 +1,12 @@
+.DS_Store
+__pycache__/
+*.pyc
+
+# Local review / rendering scratch
+report_review_pages/
+
+# Oversized local raw cache; processed GHSL masks used by the notebooks live in data/ghsl/
+data/raw/ghsl/
+
+# Non-submission presentation build scratch
+deliverables/ms4_presentation/
