@@ -1,6 +1,6 @@
 # Urban Expansion vs. Economic Activity
 
-**AC209b / CS1090B Final Project, Canvas Group 12**
+**AC209b / CS1090B Final Project, Canvas Group 16**
 
 This project studies whether satellite imagery can support economic monitoring when official economic data are delayed, sparse, or incomplete. The final modeling task is **satellite-only economic analogue retrieval**: given a city-year satellite image, retrieve historical city-years with similar economic structure and use those analogues to estimate GDP growth rate.
 
@@ -8,9 +8,9 @@ This project studies whether satellite imagery can support economic monitoring w
 
 | Deliverable | File | Purpose |
 | --- | --- | --- |
-| Final report | [`cs1090b_ms4_report_group12.pdf`](cs1090b_ms4_report_group12.pdf) | Paper-style MS4 report with motivation, data, methods, results, limitations, broader impact, and references |
-| Final presentation deck | [`cs1090b_ms4_presentation_group12.pptx`](cs1090b_ms4_presentation_group12.pptx) | Slide deck used for the final video presentation |
-| Main final notebook | [`cs1090b_ms4_main_group12.ipynb`](cs1090b_ms4_main_group12.ipynb) | End-to-end final modeling notebook for the 30-metro satellite-only retrieval pipeline |
+| Final report | [`cs1090b_ms4_report_group16.pdf`](cs1090b_ms4_report_group16.pdf) | Paper-style MS4 report with motivation, data, methods, results, limitations, broader impact, and references |
+| Final presentation deck | [`cs1090b_ms4_presentation_group16.pptx`](cs1090b_ms4_presentation_group16.pptx) | Slide deck used for the final video presentation |
+| Main final notebook | [`cs1090b_ms4_main_group16.ipynb`](cs1090b_ms4_main_group16.ipynb) | End-to-end final modeling notebook for the 30-metro satellite-only retrieval pipeline |
 | Final EDA notebook | [`final_eda_data_pipeline.ipynb`](final_eda_data_pipeline.ipynb) | Data construction, preprocessing checks, EDA, and exported figures used to motivate the modeling setup |
 | Baseline-model notebook | [`baseline_model_selection_and_justification.ipynb`](baseline_model_selection_and_justification.ipynb) | MS3 baseline model selection and justification notebook used as the reference baseline stage |
 
@@ -84,7 +84,7 @@ The main final notebook is designed to load the cached 30-city artifacts and che
 To rerun the final modeling workflow, open:
 
 ```text
-cs1090b_ms4_main_group12.ipynb
+cs1090b_ms4_main_group16.ipynb
 ```
 
 The notebook documents all required paths, split logic, model stages, training settings, validation tuning, and final test results.
